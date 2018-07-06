@@ -133,4 +133,4 @@
 ;; Cleaning non project classes: https://dev.clojure.org/jira/browse/CLJ-322
 
 ;; Cleaning non project classes is not supported by badigeon because:
-;; Most of the time, libraries should be shipped without AOT. In the rare case when a library must be shipped AOT (let's say we don't want to ship the sources), directories can be removed programmatically, between build tasks. Shipping an application with AOT is a more common. In this case, AOT compiling dependencies is not an issue.
+;; Most of the time, libraries should be shipped without AOT. In the rare case when a library must be shipped AOT (let's say we don't want to ship the sources), directories can be removed programmatically, between build tasks. Shipping an application with AOT is a more common use case. In this case, AOT compiling dependencies is not an issue.
