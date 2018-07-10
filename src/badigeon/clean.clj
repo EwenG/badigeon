@@ -57,3 +57,8 @@
   (clean "target")
   )
 
+;; We do not forbid file overwriting in compile/javac/jar/bundle because
+;; compile -> does not work with an existing file which is not a directory
+;;         -> can only overwrite .class files
+;; jar -> can only overwrite a .jar file
+;; javac/bundle -> quite similar to compile
