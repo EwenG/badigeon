@@ -29,13 +29,6 @@
 (defn is-java-file? [path attrs]
   (and (.isRegularFile attrs) (.endsWith (str path) ".java")))
 
-(defn relativize-path [^Path root-path ^Path path]
-  (if (= root-path path)
-    (if-let [parent-path (.getParent path)]
-      (.normalize (.relativize parent-path path))
-      path)
-    (.normalize (.relativize root-path path))))
-
 (def ^{:dynamic true
        :private true}
   *java-paths* nil)
@@ -73,23 +66,25 @@
               (print (str compiler-err)))))))))
 
 (defn javac
-  ([source-dirs compile-dir]
-   (javac source-dirs compile-dir nil))
-  ([source-dirs compile-dir opts]
-   (let [compiler (javax.tools.ToolProvider/getSystemJavaCompiler)]
+  ([source-dirs]
+   (javac source-dirs nil))
+  ([source-dirs {:keys [compile-path compiler-options]
+                 :or {compile-path "target/classes"}}]
+   (let [compile-path (if (instance? Path compile-path)
+                        (str compile-path)
+                        compile-path)
+         compiler (javax.tools.ToolProvider/getSystemJavaCompiler)]
      (when (nil? compiler)
        (throw (IllegalStateException. "Java compiler not found")))
      (if (coll? source-dirs)
        (doseq [source-dir source-dirs]
-         (javac* compiler source-dir compile-dir opts))
-       (javac* compiler source-dirs compile-dir opts)))))
+         (javac* compiler source-dir compile-path compiler-options))
+       (javac* compiler source-dirs compile-path compiler-options)))))
 
 (comment
-  *compile-path*
-  (javac ["src-java" "src-java2"] "target/classes")
+  (javac ["src-java" "src-java2"])
 
-  (javac ["src-java" "src-java2"] "target/classes"
-         ["-target" "1.6" "-source" "1.6" "-Xlint:-options"])
-
-  (require '[clojure.tools.nrepl])
+  (javac ["src-java" "src-java2"]
+         {:compile-path "target/classes"
+          :compiler-options ["-target" "1.6" "-source" "1.6" "-Xlint:-options"]})
   )
