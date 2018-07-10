@@ -12,9 +12,6 @@
             FileVisitOption NoSuchFileException]
            [java.io BufferedOutputStream FileOutputStream ByteArrayInputStream]))
 
-(defn relativize-path [parent-path path]
-  (.normalize (.relativize parent-path path)))
-
 (def ^:private default-manifest
   {"Created-By" (str "Badigeon " utils/version)
    "Built-By" (System/getProperty "user.name")
@@ -69,26 +66,26 @@
 (defn pom-path [group-id artifact-id root-files path]
   (when (and
          (not (.isDirectory (.toFile path)))
-         (re-matches #"^pom.xml$" (str (relativize-path root-files path))))
+         (re-matches #"^pom.xml$" (str (utils/relativize-path root-files path))))
     (format "META-INF/maven/%s/%s/pom.xml" group-id artifact-id)))
 
 (defn deps-path [group-id artifact-id root-files path]
   (when (and
          (not (.isDirectory (.toFile path)))
-         (re-matches #"^deps.edn$" (str (relativize-path root-files path))))
+         (re-matches #"^deps.edn$" (str (utils/relativize-path root-files path))))
     (format "META-INF/badigeon/%s/%s/deps.edn" group-id artifact-id)))
 
 (defn readme-path [group-id artifact-id root-files path]
   (when (and
          (not (.isDirectory (.toFile path)))
-         (re-matches #"^(?i)readme(.*)$" (str (relativize-path root-files path))))
+         (re-matches #"^(?i)readme(.*)$" (str (utils/relativize-path root-files path))))
     (format "META-INF/badigeon/%s/%s/%s"
             group-id artifact-id (.getFileName path))))
 
 (defn license-path [group-id artifact-id root-files path]
   (when (and
          (not (.isDirectory (.toFile path)))
-         (re-matches #"^(?i)license(.*)$" (str (relativize-path root-files path))))
+         (re-matches #"^(?i)license(.*)$" (str (utils/relativize-path root-files path))))
     (format "META-INF/badigeon/%s/%s/%s"
             group-id artifact-id (.getFileName path))))
 
@@ -111,7 +108,7 @@
     (when (and (not= root-path path)
                (not (when exclusion-predicate (exclusion-predicate root-path path))))
       (let [f (.toFile path)
-            relative-path (str (relativize-path root-path path))]
+            relative-path (str (utils/relativize-path root-path path))]
         (put-jar-entry! jar-out f relative-path)))))
 
 (defn inclusion-path-visitor [jar-out pred root-path path attrs]
@@ -143,12 +140,6 @@
             FileVisitResult/SKIP_SUBTREE
             :else (throw exception)))))
 
-(defn make-out-path [artifact-id {:keys [:mvn/version classifier]}]
-  (let [classifier (when classifier (str "-" (name classifier)))
-        version (when version (str "-" version))]
-    (Paths/get (System/getProperty "user.dir")
-               (into-array String ["target" (str artifact-id version classifier ".jar")]))))
-
 (defn check-non-maven-dependencies [{:keys [deps]}]
   (doseq [[lib {:keys [:mvn/version] :as dep}] deps]
     (when (nil? version)
@@ -171,7 +162,11 @@
          group-id (or (namespace lib) artifact-id)
          inclusion-path (or inclusion-path
                             (partial default-inclusion-path group-id artifact-id))
-         out-path (or out-path (make-out-path artifact-id maven-coords))
+         _ (when out-path (when-not (.endsWith (str out-path) ".jar")
+                            (throw (ex-info "out-path must be a jar file"
+                                            {:out-path out-path}))))
+         out-path (or out-path (utils/make-out-path
+                                artifact-id (assoc maven-coords :extension "jar")))
          out-path (if (string? out-path)
                     (Paths/get out-path (make-array String 0))
                     out-path)
@@ -214,8 +209,6 @@
      (str out-path))))
 
 (comment
-  ;; rm -r META-INF/ src/ && unzip badigeon-0.0.1-SNAPSHOT.jar
-
   (defn inclusion-path [group-id artifact-id root-files path]
     (license-path group-id artifact-id root-files path))
 
@@ -241,4 +234,4 @@
   
   )
 
-;; test links
+;; AOT compilation, no sources in jar -> possibility to set a custom path (target/classes)
