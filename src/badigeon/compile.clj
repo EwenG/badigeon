@@ -114,20 +114,25 @@
   )
 
 (defn compile
-  ([namespaces compile-path]
-   (compile namespaces compile-path nil))
-  ([namespaces compile-path opts]
-   (Files/createDirectories
-    (Paths/get compile-path (make-array String 0))
-    (make-array FileAttribute 0))
-   (if (coll? namespaces)
-     (binding [*compile-path* compile-path
-               *compiler-options* opts]
+  ([namespaces]
+   (compile namespaces nil))
+  ([namespaces {:keys [compile-path compiler-options]}]
+   (let [namespaces (if (coll? namespaces)
+                      namespaces
+                      [namespaces])
+         compile-path (or compile-path *compile-path*)
+         compile-path (if (string? compile-path)
+                        (Paths/get compile-path (make-array String 0))
+                        compile-path)]
+     (Files/createDirectories compile-path (make-array FileAttribute 0))
+     (binding [*compile-path* (str compile-path)
+               *compiler-options* (or compiler-options *compiler-options*)]
        (doseq [namespace namespaces]
-         (clojure.core/compile namespace)))
-     (binding [*compile-path* compile-path
-               *compiler-options* opts]
-       (clojure.core/compile namespaces)))))
+         (clojure.core/compile namespace))))))
+
+(comment
+  (compile 'badigeon.compile)
+  )
 
 
 ;; Cleaning non project classes: https://dev.clojure.org/jira/browse/CLJ-322
