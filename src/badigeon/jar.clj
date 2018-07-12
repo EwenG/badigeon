@@ -231,6 +231,13 @@
         #_:deps #_'{org.clojure/clojure {:mvn/version "1.9.0"}}
         :mvn/repos '{"clojars" {:url "https://repo.clojars.org/"}}
         :allow-all-dependencies? true})
+
+  (jar 'badigeon/badigeon
+       {:mvn/version "0.0.3-SNAPSHOT"}
+       {:paths ["target/classes"]
+        :mvn/repos '{"clojars" {:url "https://repo.clojars.org/"}}
+        :allow-all-dependencies? true
+        :main 'badigeon.main})
   
   )
 
