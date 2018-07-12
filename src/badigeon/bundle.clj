@@ -12,7 +12,7 @@
             FileSystemLoopException NoSuchFileException FileAlreadyExistsException
             StandardCopyOption LinkOption]
            [java.nio.file.attribute FileAttribute]
-           [java.io FileOutputStream]
+           [java.io FileOutputStream File]
            [java.util.zip ZipFile ZipOutputStream]
            [java.util.jar JarFile]
            [java.util EnumSet]))
@@ -146,14 +146,20 @@
                       {:lib lib
                        :coords coords})))))
 
+(defn make-out-path [lib maven-coords]
+  (let [artifact-id (name lib)]
+    (utils/make-out-path artifact-id (dissoc maven-coords :extension))))
+
 ;; excluded-libs excludes a lib but not its dependencies
 (defn bundle
-  ([out-path deps-map]
-   (bundle out-path deps-map nil))
-  ([out-path deps-map {:keys [excluded-libs
-                              allow-unstable-deps?
-                              libs-path]}]
-   (let [deps-map (update deps-map :mvn/repos with-standard-repos)
+  ([out-path]
+   (bundle out-path nil))
+  ([out-path {:keys [deps-map
+                     excluded-libs
+                     allow-unstable-deps?
+                     libs-path]}]
+   (let [deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
+         deps-map (update deps-map :mvn/repos with-standard-repos)
          resolved-deps (deps/resolve-deps deps-map nil)
          out-path (if (string? out-path)
                     (Paths/get out-path (make-array String 0))
@@ -170,15 +176,17 @@
                *copied-paths* #{}]
        (doseq [[lib {:keys [paths] :as coords}] resolved-deps]
          (when-not (contains? excluded-libs lib)
-           (copy-dependency coords out-path libs-path))))
+           (copy-dependency coords out-path libs-path)))
+       (copy-dependency {:paths (:paths deps-map)} out-path libs-path))
      out-path)))
 
 (defn extract-native-dependencies
-  ([out-path deps-map]
-   (extract-native-dependencies out-path deps-map nil))
-  ([out-path deps-map  {:keys [allow-unstable-deps?
-                               native-path
-                               natives-prefixes]}]
+  ([out-path]
+   (extract-native-dependencies out-path nil))
+  ([out-path {:keys [deps-map
+                     allow-unstable-deps?
+                     native-path
+                     natives-prefixes]}]
    (let [deps-map (update deps-map :mvn/repos with-standard-repos)
          resolved-deps (deps/resolve-deps deps-map nil)
          out-path (if (string? out-path)
@@ -197,9 +205,58 @@
          (do-extract-native-dependencies (get natives-prefixes lib) coords out-path native-path)))
      out-path)))
 
-(defn make-out-path [lib maven-coords]
-  (let [artifact-id (name lib)]
-    (utils/make-out-path artifact-id (dissoc maven-coords :extension))))
+(def ^:const windows-like :windows-like)
+(def ^:const posix-like :posix-like)
+
+(defmulti make-script-path identity)
+(defmulti make-script-header identity)
+(defmulti classpath-separator identity)
+
+(defmethod make-script-path :posix-like [os-type]
+  (Paths/get "bin/run.sh" (make-array String 0)))
+
+(defmethod make-script-path :windows-like [os-type]
+  (Paths/get "bin/run.bat" (make-array String 0)))
+
+(defmethod make-script-header :posix-like [os-type]
+  "#!/bin/sh")
+
+(defmethod make-script-header :windows-like [os-type]
+  "@echo off")
+
+(defmethod classpath-separator :posix-like [os-type]
+  ":")
+
+(defmethod classpath-separator :windows-like [os-type]
+  ";")
+
+(defn bin-script
+  ([out-path main]
+   (bin-script out-path main nil))
+  ([out-path main {:keys [os-type
+                          script-path
+                          script-header
+                          command
+                          classpath
+                          args]
+                   :or {os-type posix-like
+                        script-path (make-script-path os-type)
+                        script-header (make-script-header os-type)
+                        command "java"
+                        classpath (str ".." (classpath-separator os-type) "../lib/*")}}]
+   (let [script-path (if (string? script-path)
+                       (Paths/get script-path (make-array String 0))
+                       script-path)
+         script-path (.resolve out-path script-path)
+         args (if args
+                (str " " (clojure.string/join " " args))
+                "")]
+     (Files/createDirectories (.getParent script-path)
+                              (make-array FileAttribute 0))
+     (spit
+      (str script-path)
+      (format "%s\n%s -cp %s clojure.main -m %s%s"
+              script-header command classpath main args)))))
 
 (comment
   (require '[leiningen.uberjar])
@@ -207,13 +264,24 @@
   (utils/make-out-path "badigeon" {:mvn/version utils/version :classifier "rrr"})
 
   (let [out-path (make-out-path 'badigeon/badigeon {:mvn/version utils/version})
-        deps {:deps '{badigeon/badigeon {:local/root "/home/ewen/clojure/badigeon"}}}]
-    (bundle out-path deps {:allow-unstable-deps? true
-                           :libs-path "libs/gg"
-                           :excluded-libs #{'badigeon/badigeon 'badigeon-deps/badigeon-deps2
-                                            'com.googlecode.javaewah/JavaEWAH}})
-    (extract-native-dependencies out-path deps {:allow-unstable-deps? true
-                                                :natives-prefixes {'net.java.dev.jna/jna "com"}}))
+        deps-map (assoc (deps-reader/slurp-deps "deps.edn") :paths ["target/classes"])]
+    (badigeon.clean/clean "target/badigeon-0.0.1-SNAPSHOT")
+    (badigeon.clean/clean "target/classes")
+    (badigeon.compile/compile 'badigeon.main
+                              {:compiler-options {:elide-meta [:doc :file :line :added]
+                                                  :direct-linking true}})
+    (bundle out-path {:deps-map deps-map
+                      :allow-unstable-deps? true})
+    (extract-native-dependencies out-path {:deps-map deps-map
+                                           :allow-unstable-deps? true})
+    (bin-script out-path 'badigeon.main)
+    (bin-script out-path 'badigeon.main {:os-type windows-like}))
   )
 
-;; net/java/dev/jna/jna/4.1.0/jna-4.1.0.jar
+;; Cleaning uneeded clj files from dependencies when using AOT compilation:
+;; Remove clj files which are not in jars
+;; Remove jars with only clj files. Other jars (clj + AOT or clj + java classes) cannot be removed
+
+;; File permissions on bin/scripts are not set. They would not be retained anyway
+
+;; jvm args
