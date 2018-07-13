@@ -5,7 +5,7 @@
             [clojure.data.xml.tree :as tree]
             [clojure.data.xml.event :as event])
   (:import [java.io File Reader ByteArrayOutputStream]
-           [java.nio.file Path Paths Files]
+           [java.nio.file Paths]
            [clojure.data.xml.node Element]
            [java.util Properties]))
 
@@ -104,9 +104,6 @@
     (xml-update pom [::pom/repositories] (xml/sexp-as-element (gen-repos repos)))
     pom))
 
-(defn default-project-name [root-path]
-  (.getFileName root-path))
-
 (defn sync-pom [lib {:keys [:mvn/version]} {:keys [ deps :mvn/repos]}]
   (let [root-path (Paths/get (System/getProperty "user.dir") (make-array String 0))
         artifact-id (name lib)
@@ -135,15 +132,14 @@
     (.toByteArray baos)))
 
 (comment
-  (sync-pom 'badigeong2/badigeon4
-            '{:mvn/version "0.0.4-SNAPSHOT"}
+  (sync-pom 'badigeon/badigeon
+            '{:mvn/version "0.0.1-SNAPSHOT"}
             '{:deps {org.clojure/clojure {:mvn/version "1.9.0"}
                      badigeon-deps/badigeon-deps
                      {:local/root "badigeon-deps"}}
               :mvn/repos {"central" {:url "https://repo1.maven.org/maven2/"}
                           "clojars" {:url "https://repo.clojars.org/"}}})
 
-  (make-pom-properties 'badigeong2/badigeon4
-                       '{:mvn/version "0.0.4-SNAPSHOT"})
+  (make-pom-properties 'badigeong/badigeon '{:mvn/version "0.0.1-SNAPSHOT"})
   )
 

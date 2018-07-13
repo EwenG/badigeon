@@ -16,3 +16,4 @@
         extension (when extension (str "." extension))]
     (Paths/get (System/getProperty "user.dir")
                (into-array String ["target" (str artifact-id version classifier extension)]))))
+

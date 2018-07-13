@@ -1,12 +1,12 @@
 (ns badigeon.clean
-  (:import [java.nio.file Paths FileVisitor Files FileVisitResult FileVisitOption]))
+  (:import [java.nio.file Path Paths FileVisitor Files FileVisitResult FileVisitOption]))
 
-(defn same-directory? [path1 path2]
+(defn same-directory? [^Path path1 ^Path path2]
   (let [normalized-path1 (-> path1 (.toAbsolutePath) (.normalize))
         normalized-path2 (-> path2 (.toAbsolutePath) (.normalize))]
     (= (str normalized-path2) (str normalized-path1))))
 
-(defn is-parent-path? [path1 path2]
+(defn is-parent-path? [^Path path1 ^Path path2]
   (let [normalized-path1 (-> path1 (.toAbsolutePath) (.normalize))
         normalized-path2 (-> path2 (.toAbsolutePath) (.normalize))]
     (and (.startsWith (str normalized-path2) (str normalized-path1))
@@ -28,7 +28,7 @@
     (visitFileFailed [_ file exception]
       (throw exception))))
 
-(defn delete-recursively [dir]
+(defn delete-recursively [^Path dir]
   (when (.exists (.toFile dir))
     (Files/walkFileTree dir (make-file-visitor))))
 
@@ -46,10 +46,14 @@
 (defn clean [target-directories & {:keys [allow-outside-target?]}]
   (if (coll? target-directories)
     (doseq [dir target-directories]
-      (let [path (Paths/get dir (make-array String 0))]
+      (let [path (if (string? dir)
+                   (Paths/get dir (make-array String 0))
+                   dir)]
         (sanity-check path allow-outside-target?)
         (delete-recursively path)))
-    (let [path (Paths/get target-directories (make-array String 0))]
+    (let [path (if (string? target-directories)
+                 (Paths/get target-directories (make-array String 0))
+                 target-directories)]
       (sanity-check path allow-outside-target?)
       (delete-recursively path))))
 

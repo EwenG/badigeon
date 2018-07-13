@@ -1,11 +1,9 @@
 (ns badigeon.javac
   (:require [clojure.tools.deps.alpha :as deps]
-            [clojure.tools.deps.alpha.util.maven :as deps-maven-utils]
             [clojure.tools.deps.alpha.reader :as deps-reader])
-  (:import [javax.tools ToolProvider]
-           [java.nio.file Path Files FileVisitor FileVisitResult
-            FileVisitOption FileSystemLoopException NoSuchFileException
-            Paths LinkOption]
+  (:import [javax.tools ToolProvider JavaCompiler]
+           [java.nio.file Path Paths Files FileVisitor FileVisitResult
+            FileVisitOption FileSystemLoopException NoSuchFileException]
            [java.util EnumSet]
            [java.nio.file.attribute BasicFileAttributes FileAttribute]
            [java.io ByteArrayOutputStream]))
@@ -26,7 +24,7 @@
             FileVisitResult/SKIP_SUBTREE
             :else (throw exception)))))
 
-(defn is-java-file? [path attrs]
+(defn is-java-file? [path ^BasicFileAttributes attrs]
   (and (.isRegularFile attrs) (.endsWith (str path) ".java")))
 
 (def ^{:dynamic true
@@ -48,7 +46,7 @@
   (into `["-cp" ~classpath ~@opts "-d" ~(str compile-path)]
         (map str paths)))
 
-(defn- javac* [compiler source-dir compile-dir opts]
+(defn- javac* [^JavaCompiler compiler source-dir compile-dir opts]
   (let [source-dir (Paths/get source-dir (make-array String 0))
         compile-dir (Paths/get compile-dir (make-array String 0))]
     (binding [*java-paths* (transient [])]
@@ -66,6 +64,10 @@
               (print (str compiler-err)))))))))
 
 (defn javac
+  "Compiles java source files found in the \"source-dirs\" directory/directories.
+  source-dirs is the path of a directory or a collection of paths of directories.
+  compile-path is the path to the directory where .class file are emitted.
+  compiler-options is a vector of the options to be used when invoking the javac command."
   ([source-dirs]
    (javac source-dirs nil))
   ([source-dirs {:keys [compile-path compiler-options]
@@ -73,18 +75,16 @@
    (let [compile-path (if (instance? Path compile-path)
                         (str compile-path)
                         compile-path)
-         compiler (javax.tools.ToolProvider/getSystemJavaCompiler)]
+         compiler (ToolProvider/getSystemJavaCompiler)]
      (when (nil? compiler)
-       (throw (IllegalStateException. "Java compiler not found")))
+       (throw (ex-info "Java compiler not found" {})))
      (if (coll? source-dirs)
        (doseq [source-dir source-dirs]
          (javac* compiler source-dir compile-path compiler-options))
        (javac* compiler source-dirs compile-path compiler-options)))))
 
 (comment
-  (javac ["src-java" "src-java2"])
-
-  (javac ["src-java" "src-java2"]
+  (javac ["src-java"]
          {:compile-path "target/classes"
           :compiler-options ["-target" "1.6" "-source" "1.6" "-Xlint:-options"]})
   )

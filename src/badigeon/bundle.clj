@@ -1,26 +1,22 @@
 (ns badigeon.bundle
   (:require [clojure.tools.deps.alpha :as deps]
             [clojure.tools.deps.alpha.reader :as deps-reader]
-            [clojure.tools.deps.alpha.extensions :as extensions]
             [clojure.java.io :as io]
             [badigeon.utils :as utils]
-            [badigeon.clean :as clean]
-            [badigeon.pom :as pom]
-            [clojure.tools.deps.alpha.util.maven :as maven])
+            [clojure.tools.deps.alpha.util.maven :as maven]
+            [clojure.string :as string])
   (:import [java.nio.file Path Paths Files
             FileVisitor FileVisitOption FileVisitResult
             FileSystemLoopException NoSuchFileException FileAlreadyExistsException
             StandardCopyOption LinkOption]
            [java.nio.file.attribute FileAttribute]
-           [java.io FileOutputStream File]
-           [java.util.zip ZipFile ZipOutputStream]
-           [java.util.jar JarFile]
+           [java.util.jar JarFile JarEntry]
            [java.util EnumSet]))
 
-(def ^:dynamic *out-path* nil)
+(def ^{:dynamic true :tag Path} *out-path* nil)
 (def ^:dynamic *copied-paths* nil)
 
-(defn make-directory-file-visitor [root-path to]
+(defn make-directory-file-visitor [^Path root-path ^Path to]
   (reify FileVisitor
     (postVisitDirectory [_ dir exception]
       (when-not exception
@@ -32,8 +28,11 @@
     (preVisitDirectory [_ dir attrs]
       (let [new-dir (.resolve to (.relativize root-path dir))]
         (try
-          (Files/copy dir new-dir (into-array
-                                   StandardCopyOption [StandardCopyOption/COPY_ATTRIBUTES]))
+          (Files/copy
+           ^Path dir new-dir
+           ^"[Ljava.nio.file.StandardCopyOption;" (into-array
+                                                   StandardCopyOption
+                                                   [StandardCopyOption/COPY_ATTRIBUTES]))
           (catch FileAlreadyExistsException e
             ;; ignore
             nil))
@@ -47,9 +46,12 @@
                                             :relative-path (str relative-path)})))
         (when (some? *copied-paths*)
           (set! *copied-paths* (conj *copied-paths* relative-path)))
-        (Files/copy path new-file (into-array
-                                   StandardCopyOption [StandardCopyOption/COPY_ATTRIBUTES
-                                                       StandardCopyOption/REPLACE_EXISTING]))
+        (Files/copy
+         ^Path path new-file
+         ^"[Ljava.nio.file.StandardCopyOption;" (into-array
+                                                 StandardCopyOption
+                                                 [StandardCopyOption/COPY_ATTRIBUTES
+                                                  StandardCopyOption/REPLACE_EXISTING]))
         FileVisitResult/CONTINUE))
     (visitFileFailed [_ file exception]
       (cond (instance? FileSystemLoopException exception)
@@ -64,18 +66,18 @@
   ([native-prefix coords out-path]
    (do-extract-native-dependencies native-prefix coords out-path
                                    (Paths/get "lib" (make-array 0))))
-  ([native-prefix {:keys [paths]} out-path native-path]
-   (let [native-prefix (if (instance? Path native-prefix)
-                         native-prefix
-                         (Paths/get (str native-prefix) (make-array String 0)))
+  ([native-prefix {:keys [paths]} ^Path out-path ^Path native-path]
+   (let [^Path native-prefix (if (instance? Path native-prefix)
+                               native-prefix
+                               (Paths/get (str native-prefix) (make-array String 0)))
          native-path (.resolve out-path native-path)]
-     (doseq [path paths]
+     (doseq [^String path paths]
        (let [f (io/file path)]
          (when (and (.exists f) (not (.isDirectory f))
                     (.endsWith path ".jar"))
            (let [jar-file (JarFile. path)
                  entries (enumeration-seq (.entries jar-file))]
-             (doseq [entry entries]
+             (doseq [^JarEntry entry entries]
                (let [entry-path (.getName entry)]
                  (when (and (some #(.endsWith entry-path %) native-extensions)
                             (.startsWith entry-path (str native-prefix)))
@@ -97,12 +99,12 @@
                         (make-directory-file-visitor from to-directory))))
 
 (defn copy-file [from to]
-  (let [to (if (string? to)
-             (Paths/get to (make-array String 0))
-             to)
-        from (if (string? from)
-               (Paths/get from (make-array String 0))
-               from)
+  (let [^Path to (if (string? to)
+                   (Paths/get to (make-array String 0))
+                   to)
+        ^Path from (if (string? from)
+                     (Paths/get from (make-array String 0))
+                     from)
         relative-path (when (some? *out-path*) (.relativize *out-path* to))]
     (if (and (some? *copied-paths*)
              (get *copied-paths* relative-path))
@@ -113,13 +115,15 @@
         (when (some? *out-path*)
           (set! *copied-paths* (conj *copied-paths* relative-path)))
         (Files/copy
-         from to (into-array StandardCopyOption [StandardCopyOption/COPY_ATTRIBUTES
-                                                 StandardCopyOption/REPLACE_EXISTING]))))))
+         from to
+         ^"[Ljava.nio.file.StandardCopyOption;" (into-array StandardCopyOption
+                                                            [StandardCopyOption/COPY_ATTRIBUTES
+                                                             StandardCopyOption/REPLACE_EXISTING]))))))
 
 (defn copy-dependency
   ([coords out-path]
    (copy-dependency coords out-path (Paths/get "lib" (make-array String 0))))
-  ([{:keys [paths]} out-path libs-path]
+  ([{:keys [paths]} ^Path out-path ^Path libs-path]
    (doseq [path paths]
      (let [f (io/file path)]
        (when (.exists f)
@@ -161,14 +165,14 @@
    (let [deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos with-standard-repos)
          resolved-deps (deps/resolve-deps deps-map nil)
-         out-path (if (string? out-path)
-                    (Paths/get out-path (make-array String 0))
-                    out-path)
-         libs-path (if libs-path
-                     (if (string? libs-path)
-                       (Paths/get libs-path (make-array String 0))
-                       libs-path)
-                     (Paths/get "lib" (make-array String 0)))]
+         ^Path out-path (if (string? out-path)
+                          (Paths/get out-path (make-array String 0))
+                          out-path)
+         ^Path libs-path (if libs-path
+                           (if (string? libs-path)
+                             (Paths/get libs-path (make-array String 0))
+                             libs-path)
+                           (Paths/get "lib" (make-array String 0)))]
      (when-not allow-unstable-deps?
        (check-for-unstable-deps #(or (snapshot-dep? %) (local-dep? %)) resolved-deps))
      (Files/createDirectories (.resolve out-path libs-path) (make-array FileAttribute 0))
@@ -189,14 +193,14 @@
                      natives-prefixes]}]
    (let [deps-map (update deps-map :mvn/repos with-standard-repos)
          resolved-deps (deps/resolve-deps deps-map nil)
-         out-path (if (string? out-path)
-                    (Paths/get out-path (make-array String 0))
-                    out-path)
-         native-path (if native-path
-                       (if (string? native-path)
-                         (Paths/get native-path (make-array String 0))
-                         native-path)
-                       (Paths/get "lib" (make-array String 0)))]
+         ^Path out-path (if (string? out-path)
+                          (Paths/get out-path (make-array String 0))
+                          out-path)
+         ^Path native-path (if native-path
+                             (if (string? native-path)
+                               (Paths/get native-path (make-array String 0))
+                               native-path)
+                             (Paths/get "lib" (make-array String 0)))]
      (when-not allow-unstable-deps?
        (check-for-unstable-deps #(snapshot-dep? %) resolved-deps))
      (Files/createDirectories (.resolve out-path native-path) (make-array FileAttribute 0))
@@ -211,6 +215,7 @@
 (defmulti make-script-path identity)
 (defmulti make-script-header identity)
 (defmulti classpath-separator identity)
+(defmulti file-separator identity)
 
 (defmethod make-script-path :posix-like [os-type]
   (Paths/get "bin/run.sh" (make-array String 0)))
@@ -219,16 +224,28 @@
   (Paths/get "bin/run.bat" (make-array String 0)))
 
 (defmethod make-script-header :posix-like [os-type]
-  "#!/bin/sh")
+  "#!/bin/sh\n")
 
 (defmethod make-script-header :windows-like [os-type]
-  "@echo off")
+  "@echo off\r\n")
 
 (defmethod classpath-separator :posix-like [os-type]
   ":")
 
 (defmethod classpath-separator :windows-like [os-type]
   ";")
+
+(defmethod file-separator :posix-like [os-type]
+  "/")
+
+(defmethod file-separator :windows-like [os-type]
+  "\\")
+
+(defn format-jvm-args [jvm-args]
+  (let [formatted (string/join " " jvm-args)]
+    (if (> (count formatted) 0)
+      (str " " formatted)
+      formatted)))
 
 (defn bin-script
   ([out-path main]
@@ -238,29 +255,43 @@
                           script-header
                           command
                           classpath
+                          jvm-args
                           args]
                    :or {os-type posix-like
                         script-path (make-script-path os-type)
                         script-header (make-script-header os-type)
-                        command "java"
-                        classpath (str ".." (classpath-separator os-type) "../lib/*")}}]
-   (let [script-path (if (string? script-path)
-                       (Paths/get script-path (make-array String 0))
-                       script-path)
+                        classpath (str ".."
+                                       (classpath-separator os-type)
+                                       ".." (file-separator os-type)
+                                       "lib" (file-separator os-type)
+                                       "*")
+                        jvm-args []}}]
+   (let [^Path out-path (if (string? out-path)
+                          (Paths/get out-path (make-array String 0))
+                          out-path)
+         ^Path script-path (if (string? script-path)
+                             (Paths/get script-path (make-array String 0))
+                             script-path)
          script-path (.resolve out-path script-path)
          args (if args
                 (str " " (clojure.string/join " " args))
-                "")]
+                "")
+         custom-runtime? (.exists (.toFile (.resolve out-path "runtime/bin/java")))
+         command (or command
+                     (if custom-runtime?
+                       (str ".." (file-separator os-type)
+                            "runtime" (file-separator os-type)
+                            "bin" (file-separator os-type)
+                            "java")
+                       "java"))]
      (Files/createDirectories (.getParent script-path)
                               (make-array FileAttribute 0))
      (spit
       (str script-path)
-      (format "%s\n%s -cp %s clojure.main -m %s%s"
-              script-header command classpath main args)))))
+      (format "%s%s -cp %s%s clojure.main -m %s%s"
+              script-header command classpath (format-jvm-args jvm-args) main args)))))
 
 (comment
-  (require '[leiningen.uberjar])
-  
   (utils/make-out-path "badigeon" {:mvn/version utils/version :classifier "rrr"})
 
   (let [out-path (make-out-path 'badigeon/badigeon {:mvn/version utils/version})
@@ -274,14 +305,10 @@
                       :allow-unstable-deps? true})
     (extract-native-dependencies out-path {:deps-map deps-map
                                            :allow-unstable-deps? true})
-    (bin-script out-path 'badigeon.main)
-    (bin-script out-path 'badigeon.main {:os-type windows-like}))
+    (badigeon.jlink/jlink out-path)
+    (bin-script out-path 'badigeon.main {:jvm-args ["-Xmx1024m"]})
+    (bin-script out-path 'badigeon.main {:os-type windows-like})
+    (badigeon.zip/zip out-path (str out-path ".zip")))
   )
 
-;; Cleaning uneeded clj files from dependencies when using AOT compilation:
-;; Remove clj files which are not in jars
-;; Remove jars with only clj files. Other jars (clj + AOT or clj + java classes) cannot be removed
-
 ;; File permissions on bin/scripts are not set. They would not be retained anyway
-
-;; jvm args

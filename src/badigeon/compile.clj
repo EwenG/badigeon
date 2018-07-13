@@ -1,120 +1,11 @@
 (ns badigeon.compile
   (:refer-clojure :exclude [compile])
-  (:import [java.nio.file Path Paths Files StandardOpenOption OpenOption]
+  (:import [java.nio.file Path Paths Files]
            [java.nio.file.attribute FileAttribute]
-           [java.io File FileInputStream DataInputStream ByteArrayInputStream]
-           [java.nio ByteBuffer ByteOrder]
-           [java.nio.channels FileChannel]
+           [java.io File]
            [java.net URL URI URLClassLoader]))
 
-(comment
-  (def OPEN_OPTIONS (doto (make-array OpenOption 1)
-                      (aset 0 StandardOpenOption/READ)))
-
-  (def ^:const MAGIC 0xCAFEBABE)
-
-  (def ^:const CONSTANT_POOL_UTF_8 1)
-  (def ^:const CONSTANT_POOL_CLASS 7)
-  (def ^:const CONSTANT_POOL_NAME_AND_TYPE 12)
-  (def ^:const CONSTANT_POOL_FIELD 9)
-  (def ^:const CONSTANT_POOL_METHOD 10)
-  (def ^:const CONSTANT_POOL_INTERFACE_METHOD 11)
-  (def ^:const CONSTANT_POOL_STRING 8)
-
-  (defn get-ubyte [buff]
-    (bit-and (.get buff) 0xFF))
-
-  (defn get-ushort [buff]
-    (bit-and (.getShort buff) 0xFFFF))
-
-  (defn get-uint [buff]
-    (bit-and (.getInt buff) 0xFFFFFFFF))
-
-  (defn read-contant-pool-entry-dispatch [tag buff] tag)
-
-  (defmulti read-contant-pool-entry #'read-contant-pool-entry-dispatch)
-
-  (defmethod read-contant-pool-entry CONSTANT_POOL_UTF_8
-    [tag buff]
-    (let [length (get-ushort buff)
-          old-limit (.limit buff)
-          sb (StringBuilder. (+ length (bit-shift-right length 1) 16))]
-      (.limit buff (+ (.position buff) length))
-      (while (.hasRemaining buff)
-        (let [b (.get buff)]
-          (if (> b 0)
-            (.append sb (char b))
-            (let [b2 (.get buff)]
-              (if (not= (bit-and b 0xF0) 0xe0)
-                (.append sb (char (bit-or (bit-and b 0x1F) (bit-and b2 0x3F))))
-                (let [b3 (.get buff)]
-                  (.append sb (char (bit-or (bit-shift-left (bit-and b 0x0F) 12)
-                                            (bit-or (bit-shift-left (bit-and b2 0x3F) 6)
-                                                    (bit-and b3 0x3F)))))))))))
-      (.limit buff old-limit)
-      (str sb)))
-
-  (defmethod read-contant-pool-entry CONSTANT_POOL_CLASS
-    [tag buff]
-    (get-ushort buff))
-
-  (defmethod read-contant-pool-entry CONSTANT_POOL_NAME_AND_TYPE
-    [tag buff]
-    {:name-index (get-ushort buff)
-     :descriptor-index (get-ushort buff)})
-
-  (defmethod read-contant-pool-entry CONSTANT_POOL_FIELD
-    [tag buff]
-    {:class-index (get-ushort buff)
-     :name-and-type-index (get-ushort buff)})
-
-  (defmethod read-contant-pool-entry CONSTANT_POOL_METHOD
-    [tag buff]
-    {:class-index (get-ushort buff)
-     :name-and-type-index (get-ushort buff)})
-
-  (defmethod read-contant-pool-entry CONSTANT_POOL_INTERFACE_METHOD
-    [tag buff]
-    {:class-index (get-ushort buff)
-     :name-and-type-index (get-ushort buff)})
-
-  (defmethod read-contant-pool-entry CONSTANT_POOL_STRING
-    [tag buff]
-    (get-ushort buff))
-
-  (defn read-constant-entry [buff]
-    (let [tag (get-ubyte buff)]
-      (prn tag)
-      (read-contant-pool-entry tag buff)))
-
-  (defn read-constant-pool [buff constant-pool-count]
-    (->> (partial read-constant-entry buff)
-         (repeatedly (dec constant-pool-count))
-         (into [])))
-
-  (defn read-class [path]
-    (let [file-channel (FileChannel/open path OPEN_OPTIONS)]
-      (try
-        (let [buff (.map file-channel java.nio.channels.FileChannel$MapMode/READ_ONLY
-                         0 (.size file-channel))
-              buff (.order buff ByteOrder/BIG_ENDIAN)
-              magic (get-uint buff)]
-          (when (not= magic MAGIC)
-            (throw (RuntimeException. (format "Invalid class file: %s - Magic number: %s"
-                                              (pr-str (str path))
-                                              magic))))
-          (let [minor (get-ushort buff)
-                major (get-ushort buff)
-                constant-pool-count (get-ushort buff)]
-            {:magic magic
-             :minor minor
-             :major major
-             :constant-pool-count constant-pool-count
-             :constant-pool (read-constant-pool buff constant-pool-count)}))
-        (finally (.close file-channel)))))
-  )
-
-(defn do-compile
+(defn- do-compile
   ([namespaces]
    (do-compile namespaces nil))
   ([namespaces {:keys [compile-path compiler-options]}]
@@ -150,9 +41,15 @@
     (clojure.core/shutdown-agents)))
 
 (defn compile
+  "AOT compile one or several Clojure namespace(s). Dependencies of the compiled namespaces are
+  always AOT compiled too. Namespaces are loaded while beeing compiled so beware of side effects.
+  - namespaces is a symbol or a collection of symbols naming one or several Clojure namespaces.
+  - compile-path is the path to the directory where .class files are emitted.
+  - compiler-options has the same format than clojure.core/*compiler-options*.
+  "
   ([namespaces]
    (compile namespaces nil))
-  ([namespaces options]
+  ([namespaces {:keys [compile-path compiler-options] :as options}]
    (let [classpath (System/getProperty "java.class.path")
          classpath-urls (->> classpath classpath->paths paths->urls (into-array URL))
          classloader (URLClassLoader. classpath-urls

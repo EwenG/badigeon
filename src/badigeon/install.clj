@@ -21,15 +21,11 @@
                                   (.addArtifact pom-artifact))))))
 
 (comment
-  (require '[leiningen.install])
-
-  (def rr (install 'badigeongi2/badigeongi2
-                   {:mvn/version "0.0.3-SNAPSHOT"
-                    :classifier "cl"}
-                   "target/badigeongi2-0.0.3-SNAPSHOT-cl.jar"
-                   "pom.xml"))
-
-  (first (.getArtifacts rr))
+  (install 'badigeon/badigeon
+           {:mvn/version badigeon.utils/version
+            :classifier "cl"}
+           "target/badigeong-0.0.1-SNAPSHOT-cl.jar"
+           "pom.xml")
   )
 
 
