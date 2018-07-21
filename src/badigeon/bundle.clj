@@ -154,8 +154,13 @@
   (let [artifact-id (name lib)]
     (utils/make-out-path artifact-id (dissoc maven-coords :extension))))
 
-;; excluded-libs excludes a lib but not its dependencies
 (defn bundle
+  "Creates a standalone bundle of the project resources and its dependencies. By default jar dependencies are copied in a \"lib\" folder, under the ouput directory. Other dependencies (local and git) are copied by copying their :paths content to the root of the output directory. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
+  - out-path is the path of the output directory.
+  - deps-map is a map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
+  - excluded-libs is a set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
+  - allow-unstable-deps is a boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
+  - libs-path The path of the folder where dependencies are copied, relative to the output folder. Default to \"lib\"."
   ([out-path]
    (bundle out-path nil))
   ([out-path {:keys [deps-map
@@ -185,6 +190,12 @@
      out-path)))
 
 (defn extract-native-dependencies
+  "Extract native dependencies (.so, .dylib, .dll, .a, .lib files) from jar dependencies. By default native dependencies are extracted to a \"lib\" folder under the output directory.
+  - out-path is the path of the output directory.
+  - deps-map is a map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for native dependencies. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
+  - allow-unstable-deps is a boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
+  - natives-path The path of the folder where native dependencies are extracted, relative to the output folder. Default to \"lib\".
+  - natives-prefixes is a map from libs (symbol) to a path prefix (string). Libs with a specified native-prefix are searched for native dependencies under the path of the native prefix only. The native-prefix is excluded from the output path of the native dependency."
   ([out-path]
    (extract-native-dependencies out-path nil))
   ([out-path {:keys [deps-map
@@ -248,6 +259,14 @@
       formatted)))
 
 (defn bin-script
+  "Write a start script for the bundle under \"out-path\", using the \"main\" parameter as the CLojure namespace defining the -main method entry point.
+  - os-type must be either the badigeon.bundle.windows-like or badigeon.bundle.posix-like depending on the wanted script type. Default to badigeon.bundle.posix-like.
+  - script-path is the output path of the script, relative to the \"out-path\" parameter. Default to bin/run.sh or bin/run.bat, depending on the os-type .
+  - script-header is a string prefixed to the script. Default to \"#!/bin/sh\n\" or \"@echo off\r\n\", depending on the os-type.
+  - command is the command run by the script. Default to \"java\" or \"runtime/bin/java\" if the \"runtime\" folder contains a custom JRE created with jlink.
+  - classpath is the classpath argument used when executing the command. Default a classpath containing the root folder and the lib directory.
+  - jvm-args is a vector of jvm arguments used when executing the command. Default to the empty vector.
+  - args is a vector of arguments provided to the program. Default to the empty vector."
   ([out-path main]
    (bin-script out-path main nil))
   ([out-path main {:keys [os-type
@@ -265,7 +284,8 @@
                                        ".." (file-separator os-type)
                                        "lib" (file-separator os-type)
                                        "*")
-                        jvm-args []}}]
+                        jvm-args []
+                        args []}}]
    (let [^Path out-path (if (string? out-path)
                           (Paths/get out-path (make-array String 0))
                           out-path)
@@ -311,4 +331,6 @@
     (badigeon.zip/zip out-path (str out-path ".zip")))
   )
 
+;; Excluded-libs excludes a lib but not its dependencies
 ;; File permissions on bin/scripts are not set. They would not be retained anyway
+;; No exclusion / inclusion hooks because we can still manually remove/add files from the output folder

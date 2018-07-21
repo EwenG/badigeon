@@ -45,8 +45,7 @@
   always AOT compiled too. Namespaces are loaded while beeing compiled so beware of side effects.
   - namespaces is a symbol or a collection of symbols naming one or several Clojure namespaces.
   - compile-path is the path to the directory where .class files are emitted.
-  - compiler-options has the same format than clojure.core/*compiler-options*.
-  "
+  - compiler-options has the same format than clojure.core/*compiler-options*."
   ([namespaces]
    (compile namespaces nil))
   ([namespaces {:keys [compile-path compiler-options] :as options}]
