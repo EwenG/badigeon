@@ -64,24 +64,21 @@
               (print (str compiler-err)))))))))
 
 (defn javac
-  "Compiles java source files found in the \"source-dirs\" directory/directories.
-  source-dirs is the path of a directory or a collection of paths of directories.
-  compile-path is the path to the directory where .class file are emitted.
-  compiler-options is a vector of the options to be used when invoking the javac command."
-  ([source-dirs]
-   (javac source-dirs nil))
-  ([source-dirs {:keys [compile-path compiler-options]
-                 :or {compile-path "target/classes"}}]
+  "Compiles java source files found in the \"source-dir\" directory.
+  - source-dir is the path of a directory.
+  - compile-path is the path to the directory where .class file are emitted.
+  - compiler-options is a vector of the options to be used when invoking the javac command."
+  ([source-dir]
+   (javac source-dir nil))
+  ([source-dir {:keys [compile-path compiler-options]
+                :or {compile-path "target/classes"}}]
    (let [compile-path (if (instance? Path compile-path)
                         (str compile-path)
                         compile-path)
          compiler (ToolProvider/getSystemJavaCompiler)]
      (when (nil? compiler)
        (throw (ex-info "Java compiler not found" {})))
-     (if (coll? source-dirs)
-       (doseq [source-dir source-dirs]
-         (javac* compiler source-dir compile-path compiler-options))
-       (javac* compiler source-dirs compile-path compiler-options)))))
+     (javac* compiler source-dir compile-path compiler-options))))
 
 (comment
   (javac ["src-java"]
