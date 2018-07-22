@@ -26,6 +26,7 @@
             :else (throw exception)))))
 
 (defn zip [directory-path out-path]
+  "Zip a directory. Outputs the zipped directory to \"out-path\". The directory to be zipped is often the directory created by the Badigeon \"bundle\" function."
   (let [directory-path (if (string? directory-path)
                          (Paths/get directory-path (make-array String 0))
                          directory-path)
