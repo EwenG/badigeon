@@ -165,7 +165,7 @@
   - inclusion-path can be used to add file to the jar that would otherwise not have been added to the jar. inclusion-path can be used to add any file of the project to the jar - not only those under the project :paths. inclusion-path is a predicate function that takes two arguments: the path of the root directory of the project and the file being visited under this directory. The file being visited is added to the jar under the path returned by this function. It is not added to the jar when this function returns a falsy value. Default to a predicate that add the pom.xml, deps.edn, and any file at the root of the project directory starting with \"license\" or \"readme\" (case incensitive) under the \"META-INF\" folder of the jar.
   - allow-all-dependencies? is a boolean that can be set to true to allow any project dependency types such as local or git dependencies. Default to false, in which case only maven dependencies are allowed - an exception is thrown when this is not the case. When set to true, the jar is produced without exception, but only maven dependencies are added to the jar."
   ([lib maven-coords]
-   (jar maven-coords nil))
+   (jar lib maven-coords nil))
   ([lib maven-coords
     {:keys [out-path main manifest-entries
             paths deps :mvn/repos
