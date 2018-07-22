@@ -17,3 +17,16 @@
     (Paths/get (System/getProperty "user.dir")
                (into-array String ["target" (str artifact-id version classifier extension)]))))
 
+
+(defn artifact-with-default-extension [{:keys [file-path] :as artifact}]
+  (cond (contains? artifact :extension)
+        artifact
+        (.endsWith (str file-path) ".jar")
+        (assoc artifact :extension "jar")
+        (= (str file-path) "pom.xml")
+        (assoc artifact :extension "pom")
+        (.endsWith (str file-path) ".jar.asc")
+        (assoc artifact :extension "jar.asc")
+        (= (str file-path) "pom.xml.asc")
+        (assoc artifact :extension "pom.asc")
+        :else artifact))
