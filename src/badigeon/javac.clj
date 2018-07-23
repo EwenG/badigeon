@@ -65,12 +65,12 @@
 
 (defn javac
   "Compiles java source files found in the \"source-dir\" directory.
-  - source-dir is the path of a directory.
-  - compile-path is the path to the directory where .class file are emitted.
-  - compiler-options is a vector of the options to be used when invoking the javac command."
+  - source-dir: The path of a directory containing java source files.
+  - compile-path: The path to the directory where .class file are emitted.
+  - javac-options: A vector of the options to be used when invoking the javac command."
   ([source-dir]
    (javac source-dir nil))
-  ([source-dir {:keys [compile-path compiler-options]
+  ([source-dir {:keys [compile-path javac-options]
                 :or {compile-path "target/classes"}}]
    (let [compile-path (if (instance? Path compile-path)
                         (str compile-path)
@@ -78,10 +78,10 @@
          compiler (ToolProvider/getSystemJavaCompiler)]
      (when (nil? compiler)
        (throw (ex-info "Java compiler not found" {})))
-     (javac* compiler source-dir compile-path compiler-options))))
+     (javac* compiler source-dir compile-path javac-options))))
 
 (comment
   (javac ["src-java"]
          {:compile-path "target/classes"
-          :compiler-options ["-target" "1.6" "-source" "1.6" "-Xlint:-options"]})
+          :javac-options ["-target" "1.6" "-source" "1.6" "-Xlint:-options"]})
   )

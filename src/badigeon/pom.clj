@@ -105,7 +105,7 @@
     pom))
 
 (defn sync-pom [lib {:keys [:mvn/version]} {:keys [deps :mvn/repos]}]
-  "Creates or updates a pom.xml file at the root of the project. lib is a symbol naming the library the pom.xml file refers to. The groupId attribute of the pom.xml file is the namespace of the symbol \"lib\" if lib is a namespaced symbol, or its name if lib is an unqualified symbol. The artifactId attribute of the pom.xml file is the name of the \"lib\" symbol. THe pom.xml file version, dependencies, and repositories attributes are updated using the version, deps and repos parameters."
+  "Creates or updates a pom.xml file at the root of the project. lib is a symbol naming the library the pom.xml file refers to. The groupId attribute of the pom.xml file is the namespace of the symbol \"lib\" if lib is a namespaced symbol, or if its name is an unqualified symbol. The artifactId attribute of the pom.xml file is the name of the \"lib\" symbol. The pom.xml version, dependencies, and repositories attributes are updated using the version, deps and repos parameters."
   (let [root-path (Paths/get (System/getProperty "user.dir") (make-array String 0))
         artifact-id (name lib)
         group-id (or (namespace lib) artifact-id)

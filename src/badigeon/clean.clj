@@ -43,13 +43,16 @@
            (not (is-parent-path? target-path path)))
       (throw (IllegalArgumentException. "Cannot delete a directory outside of target-directory. Consider setting the \"allow-outside-target?\" option if you really want to delete this directory.")))))
 
-(defn clean [target-directory & {:keys [allow-outside-target?]}]
+(defn clean
   "Delete the target-directory. The directory to delete must not be outside of project root. By default, the directory to delete must either be the directory named \"target\" or must be inside the directory named \"target\". This constraint can be bypassed by setting \"allow-outside-target?\" to true."
-  (let [path (if (string? target-directory)
-               (Paths/get target-directory (make-array String 0))
-               target-directory)]
-    (sanity-check path allow-outside-target?)
-    (delete-recursively path)))
+  ([target-directory]
+   (clean target-directory nil))
+  ([target-directory {:keys [allow-outside-target?]}]
+   (let [path (if (string? target-directory)
+                (Paths/get target-directory (make-array String 0))
+                target-directory)]
+     (sanity-check path allow-outside-target?)
+     (delete-recursively path))))
 
 (comment
   (clean "target")

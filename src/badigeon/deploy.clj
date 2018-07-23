@@ -49,10 +49,35 @@
     (-> (maven/coord->artifact lib (assoc artifact :mvn/version version))
         (.setFile (io/file (str file-path))))))
 
+(defn check-for-snapshot-deps [{:keys [version] :as project-map} deps]
+  (when (and (not (re-find #"SNAPSHOT" version)))
+    (doseq [{:keys [:mvn/version] :as dep} deps]
+      (when (re-find #"SNAPSHOT" version)
+        (throw (ex-info (str "Release versions may not depend upon snapshots."
+                             "\nFreeze snapshots to dated versions or set the"
+                             "\"allow-snapshot-deps?\" uberjar option.")
+                        {:dependency dep}))))))
+
+(defn ensure-signed-artifacts [artifacts version]
+  (when-not (re-find #"SNAPSHOT" version)
+    (when-not (some :badigeon/signature? artifacts)
+      (throw (ex-info "Non-snapshot versions of artifacts should be signed. Consider setting the \"allow-unsigned?\" option to process anyway."
+                      {:artifacts artifacts
+                       :version version})))))
+
 (defn deploy
+  "Deploys a collection of artifacts to a remote repository. When deploying non-snapshot versions of artifacts, artifacts must be signed, unless the \"allow-unsigned?\" parameter is set to true.
+  - artifacts: The collection of artifacts to be deployed. Each artifact must be a map with a :file-path and an optional :extension key. :extension defaults to \"jar\" for jar file and \"pom\" for pom files. Artifacts representing a signature must also have a :badigeon/signature? key set to true.
+  - lib: A symbol naming the library to be deployed.
+  - version: The version of the library to be deployed.
+  - repository: A map with an :id and a :url key representing the remote repository where the artifacts are to be deployed. The :id is used to find credentials in the settings.xml file when authenticating to the repository.
+  - credentials: When authenticating to a repository, the credentials are searched in the maven settings.xml file, using the repository :id, unless the \"credentials\" parameter is used. credentials must be a map with the following optional keys: :username, :password, :private-key, :passphrase
+  - allow-unsigned?: When set to true, allow deploying non-snapshot versions of unsigned artifacts. Default to false."
   ([artifacts lib version repository]
    (deploy artifacts lib version repository nil))
-  ([artifacts lib version repository {:keys [credentials]}]
+  ([artifacts lib version repository {:keys [credentials allow-unsigned?]}]
+   (when-not allow-unsigned?
+     (ensure-signed-artifacts artifacts version))
    (java.lang.System/setProperty "aether.checksums.forSignature" "true")
    (let [system (maven/make-system)
          session (maven/make-session system maven/default-local-repo)
@@ -61,3 +86,5 @@
                             (.setRepository (remote-repo repository credentials)))
          deploy-request (reduce #(.addArtifact %1 %2) deploy-request artifacts)]
      (.deploy system session deploy-request))))
+
+;; Signature artifacts must have a :badigeon/signature? key. This key is added by badigeon.sign but must be manually added when not using badigeon.sign

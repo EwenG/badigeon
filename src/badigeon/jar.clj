@@ -152,22 +152,21 @@
 
 (defn jar
   "Bundles project resources into a jar file. This function also generates maven description files. By default, this function ensures that all the project dependencies are maven based.
-  - lib and maven-coords have the same format than tools.deps maven dependencies.
-  - out-path is the path of the produced jar file. When not provided, a default out-path is generated from the lib and maven coordinates.
-  - main can be used to add a \"Main\" entry to the jar manifest. Default to nil.
-  - manifest-entries is a map of additionel entries to the jar manifest. Values of the manifest-entries map can be maps to represent manifest sections. By default, the jar manifest contains the \"Created-by\", \"Built-By\" and \"Build-Jdk\" entries.
-  - paths is a vector of the paths containing the resources to be bundled into the jar. Default to the paths of the project deps.edn file.
-  - deps are the dependencies of the project. deps have the same format than the :deps entry of
-  a tools.deps map. Dependencies are copied to the pom.xml file produced while generating the jar
-  file. Default to the deps.edn dependencies of the project (excluding the system-level and user-level deps.edn dependencies)
-  - mvn/repos have the same format than the :mvn/repos entry of deps.edn. Repositories are copied to the pom.xml file produced while generating the jar. Default to nil.
-  - exclusion-predicate can be used to exclude files that would otherwise been added to the jar. exclusion-predicate is a predicate function that takes two parameters: the path fo the directory being visited (among the :paths of the project) and the path of the file being visited under this directory. The file being visited is added to the jar when the exclusion predicate returns a falsy value. It is excluded from the jar otherwise. Default to a predicate that excludes dotfiles and emacs backup files.
-  - inclusion-path can be used to add file to the jar that would otherwise not have been added to the jar. inclusion-path can be used to add any file of the project to the jar - not only those under the project :paths. inclusion-path is a predicate function that takes two arguments: the path of the root directory of the project and the file being visited under this directory. The file being visited is added to the jar under the path returned by this function. It is not added to the jar when this function returns a falsy value. Default to a predicate that add the pom.xml, deps.edn, and any file at the root of the project directory starting with \"license\" or \"readme\" (case incensitive) under the \"META-INF\" folder of the jar.
-  - allow-all-dependencies? is a boolean that can be set to true to allow any project dependency types such as local or git dependencies. Default to false, in which case only maven dependencies are allowed - an exception is thrown when this is not the case. When set to true, the jar is produced without exception, but only maven dependencies are added to the jar."
+  - lib: A symbol naming the library.
+  - maven-coords: A map with the same format than tools.deps maven coordinates.
+  - out-path: The path of the produced jar file. When not provided, a default out-path is generated from the lib and maven coordinates.
+  - main: A namespace to be added to the \"Main\" entry to the jar manifest. Default to nil.
+  - manifest: A map of additionel entries to the jar manifest. Values of the manifest map can be maps to represent manifest sections. By default, the jar manifest contains the \"Created-by\", \"Built-By\" and \"Build-Jdk\" entries.
+  - paths: A vector of the paths containing the resources to be bundled into the jar. Default to the paths of the deps.edn file.
+  - deps: The dependencies of the project. deps have the same format than the :deps entry of a tools.deps map. Dependencies are copied to the pom.xml file produced while generating the jar file. Default to the deps.edn dependencies of the project (excluding the system-level and user-level deps.edn dependencies).
+  - mvn/repos: Repositories to be copied to the pom.xml file produced while generating the jar. Must have same format than the :mvn/repos entry of deps.edn. Default to nil.
+  - exclusion-predicate: A predicate to exclude files that would otherwise been added to the jar. The predicate takes two parameters: the path fo the directory being visited (among the :paths of the project) and the path of the file being visited under this directory. The file being visited is added to the jar when the exclusion predicate returns a falsy value. It is excluded from the jar otherwise. Default to a predicate that excludes dotfiles and emacs backup files.
+  - inclusion-path: A predicate to add files to the jar that would otherwise not have been added to it. Can be used to add any file of the project to the jar - not only those under the project :paths. The predicate takes two arguments: the path of the root directory of the project and the file being visited under this directory. The file being visited is added to the jar under the path returned by this function. It is not added to the jar when this function returns a falsy value. Default to a predicate that add the pom.xml, deps.edn, and any file at the root of the project directory starting with \"license\" or \"readme\" (case incensitive) under the \"META-INF\" folder of the jar.
+  - allow-all-dependencies?: A boolean that can be set to true to allow any types of dependency, such as local or git dependencies. Default to false, in which case only maven dependencies are allowed - an exception is thrown when this is not the case. When set to true, the jar is produced even in the presence of non-maven dependencies, but only maven dependencies are added to the jar."
   ([lib maven-coords]
    (jar lib maven-coords nil))
   ([lib maven-coords
-    {:keys [out-path main manifest-entries
+    {:keys [out-path main manifest
             paths deps :mvn/repos
             exclusion-predicate inclusion-path
             allow-all-dependencies?]
@@ -194,10 +193,10 @@
                       ;; Replositories must be explicilty provided as parameters
                       (dissoc :mvn/repos)
                       (merge (select-keys options [:paths :deps :mvn/repos])))
-         manifest (-> (make-manifest main manifest-entries)
-                      (.getBytes)
-                      (ByteArrayInputStream.)
-                      (Manifest.))
+         the-manifest (-> (make-manifest main manifest)
+                          (.getBytes)
+                          (ByteArrayInputStream.)
+                          (Manifest.))
          pom-properties (pom/make-pom-properties lib maven-coords)]
      (when-not allow-all-dependencies?
        (check-non-maven-dependencies deps-map))
@@ -206,7 +205,7 @@
      (with-open [jar-out (-> (.toFile ^Path out-path)
                              (FileOutputStream.)
                              (BufferedOutputStream.)
-                             (JarOutputStream. manifest))]
+                             (JarOutputStream. the-manifest))]
        (Files/walkFileTree root-path
                            (EnumSet/of FileVisitOption/FOLLOW_LINKS)
                            Integer/MAX_VALUE
@@ -236,10 +235,10 @@
   (jar 'badigeong/badigeong
        {:mvn/version utils/version
         :classifier "cl"}
-       {:manifest-entries {"Built-By" "ewen2"
-                           "Project-awesome-level" "super-great"
-                           :my-section-1 [["MyKey1" "MyValue1"] ["MyKey2" "MyValue2"]]
-                           :my-section-2 {"MyKey3" "MyValue3" "MyKey4" "MyValue4"}}
+       {:manifest {"Built-By" "ewen2"
+                   "Project-awesome-level" "super-great"
+                   :my-section-1 [["MyKey1" "MyValue1"] ["MyKey2" "MyValue2"]]
+                   :my-section-2 {"MyKey3" "MyValue3" "MyKey4" "MyValue4"}}
         #_:inclusion-path #_(partial inclusion-path "badigeongi2" "badigeonn3")
         #_:exclusion-predicate #_exclusion-predicate
         :paths ["src" "src-java"]

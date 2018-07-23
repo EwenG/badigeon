@@ -22,12 +22,16 @@
     `["--yes" "-ab" ~@key-spec "--" ~file]))
 
 (defn sign
+  "Sign an artifact using the \"gpg\" command.
+  - artifact: A map with a :file-path key and an optional :extension key. :file-path is the path to th file to be signed. :extension is the artifact packaging type. :extension is optional and defaults to \"jar\" for jar files and \"pom\" for pom files.
+  - command: The command used to sign the artifact. Default to \"gpg\".
+  - gpg-key: The private key to be used. Default to the first private key found.
+  Returns an artifact representing the signature of the input artifact."
   ([artifact]
    (sign artifact nil))
-  ([artifact {:keys [gpg-key command] :or {command "gpg"}}]
+  ([artifact {:keys [command gpg-key] :or {command "gpg"}}]
    (let [{:keys [file-path extension]} (utils/artifact-with-default-extension artifact)
          file-path (str file-path)
-         command (or command "gpg")
          proc-env (as-env-strings (get-english-env))
          proc-args (into [command] (signing-args file-path gpg-key))
          proc (.exec (Runtime/getRuntime) (into-array String proc-args) proc-env)]
@@ -45,6 +49,7 @@
                             :command command
                             :proc-args proc-args})))))
      `{:file-path ~(str file-path ".asc")
+       :badigeon/signature? true
        ~@(when extension [:extension (str extension ".asc")])
        ~@nil})))
 
