@@ -25,7 +25,9 @@ badigeon/badigeon {:gi/url "git@github.com:EwenG/badigeon.git"
 
 # API
 
-[API usage]()
+[API usage](https://github.com/EwenG/badigeon/blob/master/API.md)
+
+[Sample file](https://github.com/EwenG/badigeon/blob/master/sample/badigeon/sample.clj)
 
 ---
 
