@@ -3,14 +3,23 @@
             [badigeon.javac :as javac]
             [badigeon.compile :as compile]
             [badigeon.jar :as jar]
-            [badigeon.install :as install]))
+            [badigeon.install :as install]
+            [badigeon.prompt :as prompt]
+            [badigeon.sign :as sign]
+            [badigeon.deploy :as deploy]
+            [badigeon.bundle :as bundle]
+            [badigeon.zip :as zip]
+            ;; Requires a JDK 9+
+            [badigeon.jlink :as jlink]
+            [clojure.tools.deps.alpha.reader :as deps-reader]
+            [clojure.tools.deps.alpha.util.maven :as maven]))
 
 (defn -main []
   ;; Delete the target directory
   (clean/clean "target"
                {;; By default, Badigeon does not allow deleting forlders outside the target directory,
                 ;; unless :allow-outside-target? is true
-                :allow-outside-target? true})
+                :allow-outside-target? false})
 
   ;; Compile java sources under the src-java directory
   (javac/javac "src-java" {;; Emit class files to the target/classes directory
@@ -50,15 +59,94 @@
             ;; By default git and local dependencies are not allowed. Set allow-all-dependencies? to true to allow them 
             :allow-all-dependencies? true})
 
-  ;; Install the previously created jar file into the local maven repository
+  ;; Install the previously created jar file into the local maven repository.
   (install/install 'badigeon/badigeon {:mvn/version "0.0.1-SNAPSHOT"}
                    ;; The jar file to be installed
                    "target/badigeon-0.0.1-SNAPSHOT.jar"
-                   ;; The pom.xml file to be installed. THis file is generted when creating the jar with the badigeon.jar/jar function
+                   ;; The pom.xml file to be installed. This file is generated when creating the jar with the badigeon.jar/jar function.
                    "pom.xml"
-                   {:local-repo (str (System/getProperty "user.home") "/.m2/repository")})
-  )
+                   {;; The local repository where the jar should be installed.
+                    :local-repo (str (System/getProperty "user.home") "/.m2/repository")})
+
+  ;; Deploy the previously created jar file to a remote repository.
+  (let [;; Artifacts are maps with a required :file-path key and an optional :extension key
+        artifacts [{:file-path "target/badigeon-0.0.1-SNAPSHOT.jar" :extension "jar"}
+                   {:file-path "pom.xml" :extension "pom"}]
+        ;; Artifacts must be signed when deploying non-snapshot versions of artifacts.
+        artifacts (badigeon.sign/sign artifacts {;; The gpg command can be customized
+                                                 :command "gpg"
+                                                 ;; The gpg key used for signing. Defaults to the first private key found in your keyring. 
+                                                 :gpg-key "root@eruditorum.org"})
+        ;; Prompt for a password using the process standard input and without echoing.
+        password (badigeon.prompt/prompt-password "Password: ")]
+    (badigeon.deploy/deploy
+     'badigeon/badigeon {:mvn/version "0.0.1-SNAPSHOT"}
+     artifacts
+     {;; :id is used to match the repository in the ~/.m2/settings.xml for credentials when no credentials are explicitly provided.
+      :id "clojars"
+      ;; The URL of the repository to deploy to.
+      :url "https://repo.clojars.org/"}
+     {;; The credentials used when authenticating to the remote repository. When none is provided, default to reading the credentials from ~/.m2/settings.xml
+      :credentials {:username "ewen" :password password
+                    :private-key "/path/to/private-key" :passphrase "passphrase"}
+      ;; When allow-unsigned? is false, artifacts must be signed when deploying non-snapshot versions of artifacts. Default to false.
+      :allow-unsigned? true}))
+
+  ;; Make a standalone bundle of the application.
+  (let [;; Automatically compute the bundle directory name based on the application name and version.
+        out-path (badigeon.bundle/make-out-path 'badigeon/badigeon "0.0.1-SNAPSHOT")]
+    (badigeon.bundle/bundle out-path
+                            {;; A map with the same format than deps.edn. :deps-map is used to resolve the project dependencies.
+                             :deps-map (deps-reader/slurp-deps "deps.edn")
+                             ;; The dependencies to be excluded from the produced bundle.
+                             :excluded-libs #{'org.clojure/clojure}
+                             ;; Set to true to allow local dependencies and snpashot versions of maven dependencies.
+                             :allow-unstable-deps? true
+                             ;; The path of the folder where dependencies are copied, relative to the output folder.
+                             :libs-path "lib"})
+    ;; Extract native dependencies (.so, .dylib, .dll, .a, .lib files) from jar dependencies.
+    (bundle/extract-native-dependencies out-path
+                                        {;; A map with the same format than deps.edn. :deps-map is used to resolve the project dependencies.
+                                         :deps-map (deps-reader/slurp-deps "deps.edn")
+                                         ;; Set to true to allow local dependencies and snpashot versions of maven dependencies.
+                                         :allow-unstable-deps? true
+                                         ;; The directory where native dependencies are copied.
+                                         :native-path "lib"
+                                         ;; The paths where native dependencies should be searched. The native-prefix is excluded from the output path of the native dependency.
+                                         :native-prefixes {'org.lwjgl.lwjgl/lwjgl-platform ""}})
+
+    ;; Requires a JDK9+
+    ;; Embeds a custom JRE runtime into the bundle.
+    (jlink/jlink out-path {;; The folder where the custom JRE is output, relative to the out-path.
+                           :jlink-path "runtime"
+                           ;; The path where the java module are searched for.
+                           :module-path (str (System/getProperty "java.home") "/jmods")
+                           ;; The modules to be used when creating the custom JRE
+                           :modules ["java.base"]
+                           ;; The options of the jlink command
+                           :jlink-options ["--strip-debug" "--no-man-pages"
+                                           "--no-header-files" "--compress=2"]})
+
+    ;; Create a start script for the application
+    (bundle/bin-script out-path 'badigeon.main
+                       {;; Specify which OS type the line breaks/separators/file extensions should be formatted for.
+                        :os-type bundle/posix-like
+                        ;; The path script is written to, relative to the out-path.
+                        :script-path "bin/run.sh"
+                        ;; A header prefixed to the script content.
+                        :script-header "#!/bin/sh\n"
+                        ;; The java binary path used to start the application. Default to \"java\" or \"runtime/bin/java\" when a custom JRE runtime is found under the run directory.
+                        :command "runtime/bin/java"
+                        ;; The classpath option used by the java command.
+                        :classpath "..:../lib/*"
+                        ;; JVM options given to the java command.
+                        :jvm-opts ["-Xmx1g"]
+                        ;; Parameters given to the application main method.
+                        :args ["some-argument"]})
+
+    ;; Zip the bundle
+    (badigeon.zip/zip out-path (str out-path ".zip"))))
 
 (comment
-  
+  (-main)
   )
