@@ -18,7 +18,7 @@ Latest release: 0.0.1
 [deps.edn](https://clojure.org/guides/deps_and_cli) dependency information:
 
 ```clojure
-badigeon/badigeon {:gi/url "git@github.com:EwenG/badigeon.git"
+badigeon/badigeon {:git/url "git@github.com:EwenG/badigeon.git"
                    :sha "cfccc96ed1c5e42f44aebcb9236b8bf3b2795b79"
                    :tag "0.0.1"}
 ```
