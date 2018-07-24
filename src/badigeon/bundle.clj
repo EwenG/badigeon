@@ -13,10 +13,10 @@
            [java.util.jar JarFile JarEntry]
            [java.util EnumSet]))
 
-(def ^{:dynamic true :tag Path} *out-path* nil)
-(def ^:dynamic *copied-paths* nil)
+(def ^{:dynamic true :private true :tag Path} *out-path* nil)
+(def ^{:dynamic true :private true} *copied-paths* nil)
 
-(defn make-directory-file-visitor [^Path root-path ^Path to]
+(defn- make-directory-file-visitor [^Path root-path ^Path to]
   (reify FileVisitor
     (postVisitDirectory [_ dir exception]
       (when-not exception
@@ -62,7 +62,7 @@
 
 (def ^:const native-extensions #{".so" ".dylib" ".dll" ".a" ".lib"})
 
-(defn do-extract-native-dependencies
+(defn- do-extract-native-dependencies
   ([native-prefix coords out-path]
    (do-extract-native-dependencies native-prefix coords out-path
                                    (Paths/get "lib" (make-array 0))))
@@ -120,7 +120,7 @@
                                                             [StandardCopyOption/COPY_ATTRIBUTES
                                                              StandardCopyOption/REPLACE_EXISTING]))))))
 
-(defn copy-dependency
+(defn- copy-dependency
   ([coords out-path]
    (copy-dependency coords out-path (Paths/get "lib" (make-array String 0))))
   ([{:keys [paths]} ^Path out-path ^Path libs-path]
@@ -132,7 +132,7 @@
              (copy-file path to))
            (copy-directory path out-path)))))))
 
-(defn with-standard-repos [repos]
+(defn- with-standard-repos [repos]
   (merge maven/standard-repos repos))
 
 (defn snapshot-dep? [{:keys [:mvn/version]}]
@@ -141,7 +141,7 @@
 (defn local-dep? [{:keys [:local/root]}]
   root)
 
-(defn check-for-unstable-deps [pred dependencies]
+(defn- check-for-unstable-deps [pred dependencies]
   (doseq [[lib  coords] dependencies]
     (when (pred coords)
       (throw (ex-info (str "Release versions may not depend upon unstable version."
@@ -150,9 +150,9 @@
                       {:lib lib
                        :coords coords})))))
 
-(defn make-out-path [lib maven-coords]
+(defn make-out-path [lib version]
   (let [artifact-id (name lib)]
-    (utils/make-out-path artifact-id (dissoc maven-coords :extension))))
+    (utils/make-out-path artifact-id {:mvn/version version})))
 
 (defn bundle
   "Creates a standalone bundle of the project resources and its dependencies. By default jar dependencies are copied in a \"lib\" folder, under the ouput directory. Other dependencies (local and git) are copied by copying their :paths content to the root of the output directory. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
@@ -194,14 +194,14 @@
   - out-path: The path of the output directory.
   - deps-map: A map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for native dependencies. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
   - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
-  - natives-path: The path of the folder where native dependencies are extracted, relative to the output folder. Default to \"lib\".
-  - natives-prefixes: A map from libs (symbol) to a path prefix (string). Libs with a specified native-prefix are searched for native dependencies under the path of the native prefix only. The native-prefix is excluded from the output path of the native dependency."
+  - native-path: The path of the folder where native dependencies are extracted, relative to the output folder. Default to \"lib\".
+  - native-prefixes: A map from libs (symbol) to a path prefix (string). Libs with a specified native-prefix are searched for native dependencies under the path of the native prefix only. The native-prefix is excluded from the output path of the native dependency."
   ([out-path]
    (extract-native-dependencies out-path nil))
   ([out-path {:keys [deps-map
                      allow-unstable-deps?
                      native-path
-                     natives-prefixes]}]
+                     native-prefixes]}]
    (let [deps-map (update deps-map :mvn/repos with-standard-repos)
          resolved-deps (deps/resolve-deps deps-map nil)
          ^Path out-path (if (string? out-path)
@@ -216,8 +216,8 @@
        (check-for-unstable-deps #(snapshot-dep? %) resolved-deps))
      (Files/createDirectories (.resolve out-path native-path) (make-array FileAttribute 0))
      (doseq [[lib {:keys [paths] :as coords}] resolved-deps]
-       (when (contains? natives-prefixes lib)
-         (do-extract-native-dependencies (get natives-prefixes lib) coords out-path native-path)))
+       (when (contains? native-prefixes lib)
+         (do-extract-native-dependencies (get native-prefixes lib) coords out-path native-path)))
      out-path)))
 
 (def ^:const windows-like :windows-like)
@@ -252,8 +252,8 @@
 (defmethod file-separator :windows-like [os-type]
   "\\")
 
-(defn format-jvm-args [jvm-args]
-  (let [formatted (string/join " " jvm-args)]
+(defn format-jvm-opts [jvm-opts]
+  (let [formatted (string/join " " jvm-opts)]
     (if (> (count formatted) 0)
       (str " " formatted)
       formatted)))
@@ -265,7 +265,7 @@
   - script-header: A string prefixed to the script. Default to \"#!/bin/sh\n\" or \"@echo off\r\n\", depending on the os-type.
   - command: The command run by the script. Default to \"java\" or \"runtime/bin/java\" if the \"runtime\" folder contains a custom JRE created with jlink.
   - classpath: The classpath argument used when executing the command. Default a classpath containing the root folder and the lib directory.
-  - jvm-args: A vector of jvm arguments used when executing the command. Default to the empty vector.
+  - jvm-opts: A vector of jvm arguments used when executing the command. Default to the empty vector.
   - args: A vector of arguments provided to the program. Default to the empty vector."
   ([out-path main]
    (bin-script out-path main nil))
@@ -274,7 +274,7 @@
                           script-header
                           command
                           classpath
-                          jvm-args
+                          jvm-opts
                           args]
                    :or {os-type posix-like
                         script-path (make-script-path os-type)
@@ -284,7 +284,7 @@
                                        ".." (file-separator os-type)
                                        "lib" (file-separator os-type)
                                        "*")
-                        jvm-args []
+                        jvm-opts []
                         args []}}]
    (let [^Path out-path (if (string? out-path)
                           (Paths/get out-path (make-array String 0))
@@ -309,12 +309,12 @@
      (spit
       (str script-path)
       (format "%s%s -cp %s%s clojure.main -m %s%s"
-              script-header command classpath (format-jvm-args jvm-args) main args)))))
+              script-header command classpath (format-jvm-opts jvm-opts) main args)))))
 
 (comment
   (utils/make-out-path "badigeon" {:mvn/version utils/version :classifier "rrr"})
 
-  (let [out-path (make-out-path 'badigeon/badigeon {:mvn/version utils/version})
+  (let [out-path (make-out-path 'badigeon/badigeon utils/version)
         deps-map (assoc (deps-reader/slurp-deps "deps.edn") :paths ["target/classes"])]
     (badigeon.clean/clean "target/badigeon-0.0.1-SNAPSHOT")
     (badigeon.clean/clean "target/classes")
@@ -326,7 +326,7 @@
     (extract-native-dependencies out-path {:deps-map deps-map
                                            :allow-unstable-deps? true})
     (badigeon.jlink/jlink out-path)
-    (bin-script out-path 'badigeon.main {:jvm-args ["-Xmx1024m"]})
+    (bin-script out-path 'badigeon.main {:jvm-opts ["-Xmx1024m"]})
     (bin-script out-path 'badigeon.main {:os-type windows-like})
     (badigeon.zip/zip out-path (str out-path ".zip")))
   )
