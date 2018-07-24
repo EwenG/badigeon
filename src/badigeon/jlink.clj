@@ -24,7 +24,7 @@
   "Creates a custom JRE using the jlink command. To be run, this function requires a JDK >= version 9. 
   - out-path: The output folder of the custom JRE (this often is the same out-path than the one provided to the Badigeon \"bundle\" function). By default the JRE is output in the out-path/runtime directory.
   - jlink-path: The folder where the custom JRE is output, relative to \"out-path\". Default to \"runtime\".
-  - module-path: The path where the java module are searched. Default to \"JAVA_HOME/jmods\".
+  - module-path: The path where the java module are searched for. Default to \"JAVA_HOME/jmods\".
   - modules: A vector of modules to be used when creating the custom JRE. Default to [\"java.base\"]
   - jlink-options: The options used when executing the jlink command. Default to [\"--strip-debug\" \"--no-man-pages\" \"--no-header-files\" \"--compress=2\"]"
   ([out-path]
