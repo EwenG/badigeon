@@ -23,7 +23,7 @@ AOT compile one or several Clojure namespace(s). Dependencies of the compiled na
   always AOT compiled too. Namespaces are loaded while beeing compiled so beware of side effects.
   - namespaces: A symbol or a collection of symbols naming one or several Clojure namespaces.
   - compile-path: The path to the directory where .class files are emitted. Default to "target/classes".
-  - compiler-options: A map with the same format than clojure.core/*compiler-options*.
+  - compiler-options: A map with the same format than clojure.core/\*compiler-options\*.
 
 ## `badigeon.jar/jar`
 
@@ -63,13 +63,13 @@ Install a jar file into the local maven repository.
 
 Arglists: `([prompt])`
 
-Read a string from *in*, prompting with string "prompt".
+Read a string from \*in\*, prompting with string "prompt".
 
 ## `badigeon.prompt/prompt-password`
 
 Arglists: `([prompt])`
 
-Read a string for the process standard input without echoing, prompting with string "prompt". Note that the process standard input may be different than *in* when using a socket REPL for example.
+Read a string for the process standard input without echoing, prompting with string "prompt". Note that the process standard input may be different than \*in\* when using a socket REPL for example.
 
 ## `badigeon.sign/sign`
 
@@ -129,6 +129,17 @@ Write a start script for the bundle under "out-path", using the "main" parameter
   - classpath: The classpath argument used when executing the command. Default a classpath containing the root folder and the lib directory.
   - jvm-opts: A vector of jvm arguments used when executing the command. Default to the empty vector.
   - args: A vector of arguments provided to the program. Default to the empty vector.
+
+## `badigeon.jlink/jlink`
+
+Arglists: `([out-path] [out-path {:keys [jlink-path module-path modules jlink-options]}])`
+
+Creates a custom JRE using the jlink command. To be run, this function requires a JDK >= version 9. 
+  - out-path: The output folder of the custom JRE (this often is the same out-path than the one provided to the Badigeon "bundle" function). By default the JRE is output in the out-path/runtime directory.
+  - jlink-path: The folder where the custom JRE is output, relative to "out-path". Default to "runtime".
+  - module-path: The path where the java module are searched for. Default to "JAVA_HOME/jmods".
+  - modules: A vector of modules to be used when creating the custom JRE. Default to ["java.base"]
+  - jlink-options: The options used when executing the jlink command. Default to ["--strip-debug" "--no-man-pages" "--no-header-files" "--compress=2"]
 
 ## `badigeon.zip/zip`
 

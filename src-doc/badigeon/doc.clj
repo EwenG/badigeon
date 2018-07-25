@@ -19,6 +19,15 @@
    "Arglists: `%s`\n\n"
    "%s"))
 
+(defn escape-chars [s]
+  (let [sb (StringBuilder.)]
+    (dotimes [n (count s)]
+      (let [c (.charAt s n)]
+        (case c
+          \* (do (.append sb \\ ) (.append sb \*))
+          (.append sb c))))
+    (str sb)))
+
 (def vars [#'javac/javac #'clean/clean #'compile/compile #'jar/jar #'pom/sync-pom #'install/install
            #'prompt/prompt #'prompt/prompt-password #'sign/sign #'deploy/deploy
            #'bundle/bundle #'bundle/extract-native-dependencies #'bundle/bin-script
@@ -43,7 +52,7 @@
     (doc-entry template (var-sym v) arglists doc)))
 
 (defn gen-doc [vars]
-  (apply str header (map v->doc vars)))
+  (escape-chars (apply str header (map v->doc vars))))
 
 (defn -main []
   (spit "API.md" (gen-doc vars)))
