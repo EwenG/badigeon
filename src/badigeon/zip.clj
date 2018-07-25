@@ -37,7 +37,8 @@
                     (Paths/get out-path (make-array String 0))
                     out-path)
          out-path (or out-path (.resolveSibling
-                                directory-path (str (.getFileName directory-path) ".zip")))]
+                                ^Path directory-path
+                                (str (.getFileName ^Path directory-path) ".zip")))]
      (with-open [zip-out (-> (.toFile ^Path out-path)
                              (FileOutputStream.)
                              (BufferedOutputStream.)

@@ -31,7 +31,9 @@
          file-path (str file-path)
          proc-env (as-env-strings (get-english-env))
          proc-args (into [command] (signing-args file-path gpg-key))
-         proc (.exec (Runtime/getRuntime) (into-array String proc-args) proc-env)]
+         proc (.exec (Runtime/getRuntime)
+                     ^"[Ljava.lang.String;" (into-array String proc-args)
+                     ^"[Ljava.lang.String;" proc-env)]
      (.addShutdownHook (Runtime/getRuntime)
                        (Thread. (fn [] (.destroy proc))))
      (with-open [proc-out (.getInputStream proc)
