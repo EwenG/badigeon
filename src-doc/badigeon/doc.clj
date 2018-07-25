@@ -19,7 +19,7 @@
    "Arglists: `%s`\n\n"
    "%s"))
 
-(defn escape-chars [s]
+(defn escape-chars [^String s]
   (let [sb (StringBuilder.)]
     (dotimes [n (count s)]
       (let [c (.charAt s n)]
@@ -33,7 +33,7 @@
            #'bundle/bundle #'bundle/extract-native-dependencies #'bundle/bin-script
            #'jlink/jlink #'zip/zip])
 
-(defn var-sym [v]
+(defn var-sym [^clojure.lang.Var v]
   (symbol (str (.-ns v)) (str (.-sym v))))
 
 (defn arglists-remove-default-vals [arg]
