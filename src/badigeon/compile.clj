@@ -12,7 +12,7 @@
    (let [namespaces (if (coll? namespaces)
                       namespaces
                       [namespaces])
-         compile-path (or compile-path *compile-path*)
+         compile-path (or compile-path "target/classes")
          compile-path (if (string? compile-path)
                         (Paths/get compile-path (make-array String 0))
                         compile-path)]
@@ -44,12 +44,18 @@
   "AOT compile one or several Clojure namespace(s). Dependencies of the compiled namespaces are
   always AOT compiled too. Namespaces are loaded while beeing compiled so beware of side effects.
   - namespaces: A symbol or a collection of symbols naming one or several Clojure namespaces.
-  - compile-path: The path to the directory where .class files are emitted.
+  - compile-path: The path to the directory where .class files are emitted. Default to \"target/classes\".
   - compiler-options: A map with the same format than clojure.core/*compiler-options*."
   ([namespaces]
    (compile namespaces nil))
   ([namespaces {:keys [compile-path compiler-options] :as options}]
-   (let [classpath (System/getProperty "java.class.path")
+   (let [compile-path (or compile-path "target/classes")
+         compile-path (if (string? compile-path)
+                        (Paths/get compile-path (make-array String 0))
+                        compile-path)
+         ;; We must ensure early that the compile-path exists otherwise the Clojure Compiler has issues compiling classes / loading classes. I'm not sure why exactly
+         _ (Files/createDirectories compile-path (make-array FileAttribute 0))
+         classpath (System/getProperty "java.class.path")
          classpath-urls (->> classpath classpath->paths paths->urls (into-array URL))
          classloader (URLClassLoader. classpath-urls
                                       (.getParent (ClassLoader/getSystemClassLoader)))
