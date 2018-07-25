@@ -44,7 +44,7 @@
       (throw (IllegalArgumentException. "Cannot delete a directory outside of target-directory. Consider setting the \"allow-outside-target?\" option if you really want to delete this directory.")))))
 
 (defn clean
-  "Delete the target-directory. The directory to delete must not be outside of project root. By default, the directory to delete must either be the directory named \"target\" or must be inside the directory named \"target\". This constraint can be bypassed by setting \"allow-outside-target?\" to true."
+  "Delete the target-directory. The directory to delete must not be outside of project root. By default, the directory to delete must either be the directory named \"target\" or must be inside the directory named \"target\". Setting the \"allow-outside-target?\" parameter to true makes deleting directories outside \"target\" possible."
   ([target-directory]
    (clean target-directory nil))
   ([target-directory {:keys [allow-outside-target?]}]
