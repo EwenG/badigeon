@@ -25,8 +25,7 @@
   (let [repository (RemoteRepository$Builder. id "default" url)
         ^org.apache.maven.settings.Server server-setting
         (first (filter
-                #(.equalsIgnoreCase id
-                                    (.getId ^org.apache.maven.settings.Server %))
+                #(.equalsIgnoreCase ^String id (.getId ^org.apache.maven.settings.Server %))
                 (.getServers (get-settings))))
         username (or (:username credentials) (when server-setting
                                                (.getUsername server-setting)))
@@ -84,7 +83,7 @@
          artifacts (map (partial make-artifact lib version) artifacts)
          deploy-request (-> (DeployRequest.)
                             (.setRepository (remote-repo repository credentials)))
-         deploy-request (reduce #(.addArtifact %1 %2) deploy-request artifacts)]
+         deploy-request (reduce #(.addArtifact ^DeployRequest %1 %2) deploy-request artifacts)]
      (.deploy system session deploy-request))))
 
 ;; Signature artifacts must have a :badigeon/signature? key. This key is added by badigeon.sign but must be manually added when not using badigeon.sign
