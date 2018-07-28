@@ -147,3 +147,28 @@ Arglists: `([directory-path] [directory-path out-path])`
 
 Zip a directory. By default, outputs the zipped directory to a file with the same name than "directory-path" but with a .zip extension. The directory to be zipped is often the directory created by the Badigeon "bundle" function.
 
+## `badigeon.war/war-exploded`
+
+Arglists: `([out-path servlet-namespace] [out-path servlet-namespace {:keys [compiler-options deps-map excluded-libs allow-unstable-deps? manifest servlet-version servlet-name servlet-class url-pattern listener-namespace listener-class], :as opts}])`
+
+Creates an exploded war directory. The produced war can be run on legacy java servers such as Tomcat. This function AOT compiles the provided servlet-namespace. The servlet-namespace must contain a :gen-class directive implementing an HttpServlet.
+  - out-path: The path of the output directory.
+  - servlet-namespace: A symbol naming a namespace. This namespace must contain a :gen-class directive implementing an HttpServlet.
+  - compiler-options: A map with the same format than clojure.core/\*compiler-options\*. The compiler-options are used when compiling the servlet-namespace and, when provided, the listener-namespace.
+  - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
+  - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
+  - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
+  - manifest: A map of additionel entries to the war manifest. Values of the manifest map can be maps to represent manifest sections. By default, the war manifest contains the "Created-by", "Built-By" and "Build-Jdk" entries.
+  - servlet-version: The version of the servlet spec that we claim to conform to. Attributes corresponding to this version will be added to the web-app element of the web.xml. If not specified, defaults to 2.5.
+  - servlet-name: The name of the servlet (in web.xml). Defaults to the servlet-namespace name.
+  - servlet-class: The servlet class name. Default to the munged servlet-namespace name.
+  - url-pattern: The url pattern of the servlet mapping (in web.xml). Defaults to "/\*".
+  - listener-namespace: A symbol naming a namespace. This namespace must contain a :gen-class directive implementing a ServletContextListener.
+  - listener-class: Class used for servlet init/destroy functions. Called listener because underneath it uses a ServletContextListener.
+
+## `badigeon.war/war`
+
+Arglists: `([out-path servlet-namespace] [out-path servlet-namespace {:keys [compiler-options deps-map excluded-libs allow-unstable-deps? manifest servlet-version servlet-name servlet-class url-pattern listener-namespace listener-class], :as opts}])`
+
+Use the badigeon.war/war-exploded function to create an exploded war directory and zip the result into a .war file.
+

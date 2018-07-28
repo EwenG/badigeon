@@ -11,6 +11,7 @@
             [badigeon.zip :as zip]
             ;; Requires a JDK 9+
             [badigeon.jlink :as jlink]
+            [badigeon.war :as war]
             [clojure.tools.deps.alpha.reader :as deps-reader]
             [clojure.tools.deps.alpha.util.maven :as maven]))
 
@@ -145,7 +146,42 @@
                         :args ["some-argument"]})
 
     ;; Zip the bundle
-    (badigeon.zip/zip out-path (str out-path ".zip"))))
+    (badigeon.zip/zip out-path (str out-path ".zip"))
+
+    ;; Delete the target directory
+    (clean/clean "target")
+
+    (war/war out-path 'badigeon.servlet
+             {;; Compiler options used by the clojure.core/compile function. These options are used when AOT compiling the servlet-namespace and the listener-namespace.
+              :compiler-options {:disable-locals-clearing false
+                                 :elide-meta [:doc :file :line :added]
+                                 :direct-linking true}
+
+              ;; A map with the same format than deps.edn. :deps-map is used to resolve the project dependencies.
+              :deps-map (deps-reader/slurp-deps "deps.edn")
+              ;; The dependencies to be excluded from the produced bundle.
+              :excluded-libs #{'org.clojure/clojure}
+              ;; Set to true to allow local dependencies and snpashot versions of maven dependencies.
+              :allow-unstable-deps? true
+
+              ;; Additional key/value pairs to add to the jar manifest. If a value is a collection, a manifest section is built for it.
+              :manifest {"Project-awesome-level" "super-great"
+                         :my-section-1 [["MyKey1" "MyValue1"] ["MyKey2" "MyValue2"]]
+                         :my-section-2 {"MyKey3" "MyValue3" "MyKey4" "MyValue4"}}
+
+              ;; The version of the servlet spec that we claim to conform to. Attributes corresponding to this version will be added to the web-app element of the web.xml. If not specified, defaults to 2.5.
+              :servlet-version "3.0"
+              ;; The name of the servlet (in web.xml). Defaults to the servlet-namespace name.
+              :servlet-name "custom-servlet-name"
+              ;; The servlet class name. Default to the munged servlet-namespace name.
+              :servlet-class "CustomServletClass"
+              ;; The url pattern of the servlet mapping (in web.xml). Defaults to \"/*\".
+              :url-pattern "/url-pattern"
+
+              ;; A symbol naming a namespace. This namespace must contain a :gen-class directive implementing a ServletContextListener.
+              :listener-namespace 'test-war.listener
+              ;; Class used for servlet init/destroy functions. Called listener because underneath it uses a ServletContextListener.
+              :listener-class "customListenerClass"})))
 
 (comment
   (-main)

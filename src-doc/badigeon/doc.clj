@@ -10,7 +10,8 @@
             [badigeon.deploy :as deploy]
             [badigeon.bundle :as bundle]
             [badigeon.jlink :as jlink]
-            [badigeon.zip :as zip]))
+            [badigeon.zip :as zip]
+            [badigeon.war :as war]))
 
 (def header "# API\n\n")
 (def template
@@ -31,7 +32,7 @@
 (def vars [#'javac/javac #'clean/clean #'compile/compile #'jar/jar #'pom/sync-pom #'install/install
            #'prompt/prompt #'prompt/prompt-password #'sign/sign #'deploy/deploy
            #'bundle/bundle #'bundle/extract-native-dependencies #'bundle/bin-script
-           #'jlink/jlink #'zip/zip])
+           #'jlink/jlink #'zip/zip #'war/war-exploded #'war/war])
 
 (defn var-sym [^clojure.lang.Var v]
   (symbol (str (.-ns v)) (str (.-sym v))))

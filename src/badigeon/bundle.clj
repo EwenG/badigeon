@@ -3,7 +3,6 @@
             [clojure.tools.deps.alpha.reader :as deps-reader]
             [clojure.java.io :as io]
             [badigeon.utils :as utils]
-            [clojure.tools.deps.alpha.util.maven :as maven]
             [clojure.string :as string])
   (:import [java.nio.file Path Paths Files
             FileVisitor FileVisitOption FileVisitResult
@@ -132,24 +131,6 @@
              (copy-file path to))
            (copy-directory path out-path)))))))
 
-(defn- with-standard-repos [repos]
-  (merge maven/standard-repos repos))
-
-(defn snapshot-dep? [{:keys [:mvn/version]}]
-  (and version (re-find #"SNAPSHOT" version)))
-
-(defn local-dep? [{:keys [:local/root]}]
-  root)
-
-(defn- check-for-unstable-deps [pred dependencies]
-  (doseq [[lib  coords] dependencies]
-    (when (pred coords)
-      (throw (ex-info (str "Release versions may not depend upon unstable version."
-                           "\nFreeze snapshots/local dependencies to dated versions or set the "
-                           "\"allow-unstable-deps?\" option.")
-                      {:lib lib
-                       :coords coords})))))
-
 (defn make-out-path [lib version]
   (let [artifact-id (name lib)]
     (utils/make-out-path artifact-id {:mvn/version version})))
@@ -168,7 +149,7 @@
                      allow-unstable-deps?
                      libs-path]}]
    (let [deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
-         deps-map (update deps-map :mvn/repos with-standard-repos)
+         deps-map (update deps-map :mvn/repos utils/with-standard-repos)
          resolved-deps (deps/resolve-deps deps-map nil)
          ^Path out-path (if (string? out-path)
                           (Paths/get out-path (make-array String 0))
@@ -179,7 +160,7 @@
                              libs-path)
                            (Paths/get "lib" (make-array String 0)))]
      (when-not allow-unstable-deps?
-       (check-for-unstable-deps #(or (snapshot-dep? %) (local-dep? %)) resolved-deps))
+       (utils/check-for-unstable-deps #(or (utils/snapshot-dep? %) (utils/local-dep? %)) resolved-deps))
      (Files/createDirectories (.resolve out-path libs-path) (make-array FileAttribute 0))
      (binding [*out-path* out-path
                *copied-paths* #{}]
@@ -202,7 +183,7 @@
                      allow-unstable-deps?
                      native-path
                      native-prefixes]}]
-   (let [deps-map (update deps-map :mvn/repos with-standard-repos)
+   (let [deps-map (update deps-map :mvn/repos utils/with-standard-repos)
          resolved-deps (deps/resolve-deps deps-map nil)
          ^Path out-path (if (string? out-path)
                           (Paths/get out-path (make-array String 0))
@@ -213,7 +194,7 @@
                                native-path)
                              (Paths/get "lib" (make-array String 0)))]
      (when-not allow-unstable-deps?
-       (check-for-unstable-deps #(snapshot-dep? %) resolved-deps))
+       (utils/check-for-unstable-deps #(utils/snapshot-dep? %) resolved-deps))
      (Files/createDirectories (.resolve out-path native-path) (make-array FileAttribute 0))
      (doseq [[lib {:keys [paths] :as coords}] resolved-deps]
        (when (contains? native-prefixes lib)

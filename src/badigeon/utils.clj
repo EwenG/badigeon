@@ -1,4 +1,5 @@
 (ns badigeon.utils
+  (:require [clojure.tools.deps.alpha.util.maven :as maven])
   (:import [java.nio.file Paths Path]))
 
   (def ^:const version "0.0.2-SNAPSHOT")
@@ -30,3 +31,21 @@
         (= (str file-path) "pom.xml.asc")
         (assoc artifact :extension "pom.asc")
         :else artifact))
+
+(defn with-standard-repos [repos]
+  (merge maven/standard-repos repos))
+
+(defn check-for-unstable-deps [pred dependencies]
+  (doseq [[lib coords] dependencies]
+    (when (pred coords)
+      (throw (ex-info (str "Release versions may not depend upon unstable version."
+                           "\nFreeze snapshots/local dependencies to dated versions or set the "
+                           "\"allow-unstable-deps?\" option.")
+                      {:lib lib
+                       :coords coords})))))
+
+(defn snapshot-dep? [{:keys [:mvn/version]}]
+  (and version (re-find #"SNAPSHOT" version)))
+
+(defn local-dep? [{:keys [:local/root]}]
+  root)
