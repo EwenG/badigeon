@@ -172,3 +172,12 @@ Arglists: `([out-path servlet-namespace] [out-path servlet-namespace {:keys [com
 
 Use the badigeon.war/war-exploded function to create an exploded war directory and zip the result into a .war file.
 
+## `badigeon.exec/exec`
+
+Arglists: `([command] [command {:keys [proc-args error-msg]}])`
+
+Synchronously executes the specified command in a separate process. Prints the process output using "clojure.core/print". Throws an exception when the process exit code is not 0.
+  - command: The command to be executed.
+  - proc-args: A collection of command arguments.
+  - error-msg: The error message of the exception thrown upon error.
+

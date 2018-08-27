@@ -11,6 +11,7 @@ Badigeon is a build library based on tools.deps. Badigeon can be used to:
 - Package a project into a standalone bundle with a start script
 - Produce a custom JRE runtime using jlink
 - Package a project as a war file
+- Execute shell commands in a separate process
 
 # Release information
 

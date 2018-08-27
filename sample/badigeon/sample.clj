@@ -12,6 +12,7 @@
             ;; Requires a JDK 9+
             [badigeon.jlink :as jlink]
             [badigeon.war :as war]
+            [badigeon.exec :as exec]
             [clojure.tools.deps.alpha.reader :as deps-reader]
             [clojure.tools.deps.alpha.util.maven :as maven]))
 
@@ -181,7 +182,12 @@
               ;; A symbol naming a namespace. This namespace must contain a :gen-class directive implementing a ServletContextListener.
               :listener-namespace 'test-war.listener
               ;; Class used for servlet init/destroy functions. Called listener because underneath it uses a ServletContextListener.
-              :listener-class "customListenerClass"})))
+              :listener-class "customListenerClass"})
+
+    ;; Execute the "lessc" command in a separate process.
+    (exec/exec "lessc" {:proc-args ["test.less" "test.css"]
+                        ;; The error message of the exception thrown upon error.
+                        :error-msg "Process execution error"})))
 
 (comment
   (-main)

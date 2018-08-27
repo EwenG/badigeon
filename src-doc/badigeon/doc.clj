@@ -11,7 +11,8 @@
             [badigeon.bundle :as bundle]
             [badigeon.jlink :as jlink]
             [badigeon.zip :as zip]
-            [badigeon.war :as war]))
+            [badigeon.war :as war]
+            [badigeon.exec :as exec]))
 
 (def header "# API\n\n")
 (def template
@@ -32,7 +33,7 @@
 (def vars [#'javac/javac #'clean/clean #'compile/compile #'jar/jar #'pom/sync-pom #'install/install
            #'prompt/prompt #'prompt/prompt-password #'sign/sign #'deploy/deploy
            #'bundle/bundle #'bundle/extract-native-dependencies #'bundle/bin-script
-           #'jlink/jlink #'zip/zip #'war/war-exploded #'war/war])
+           #'jlink/jlink #'zip/zip #'war/war-exploded #'war/war #'exec/exec])
 
 (defn var-sym [^clojure.lang.Var v]
   (symbol (str (.-ns v)) (str (.-sym v))))
@@ -45,7 +46,12 @@
         :else arg))
 
 (defn doc-entry [template v-sym v-arglists doc]
-  (str (format template (pr-str v-sym) (pr-str v-arglists) doc) "\n\n"))
+  (str (format template
+               (pr-str v-sym)
+               (binding [*print-length* nil
+                         *print-level* nil]
+                 (pr-str v-arglists))
+               doc) "\n\n"))
 
 (defn v->doc [v]
   (let [{:keys [arglists doc]} (meta v)
