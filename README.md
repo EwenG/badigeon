@@ -15,14 +15,14 @@ Badigeon is a build library based on tools.deps. Badigeon can be used to:
 
 # Release information
 
-Latest release: 0.0.2
+Latest release: 0.0.3
 
 [deps.edn](https://clojure.org/guides/deps_and_cli) dependency information:
 
 ```clojure
 badigeon/badigeon {:git/url "git@github.com:EwenG/badigeon.git"
-                   :sha "2aacfc23f1f332d91575041a9df35436007277e9"
-                   :tag "0.0.2"}
+                   :sha "4e55dc9a6f1954d7bc37429430dc00d14576a201"
+                   :tag "0.0.3"}
 ```
 
 # API
