@@ -36,17 +36,21 @@
     (Files/createDirectories compile-dir (make-array FileAttribute 0))
     (set! *java-paths* (conj! *java-paths* path))))
 
-(defn- get-classpath []
-  (let [{:keys [config-files]} (deps-reader/clojure-env)
-        deps-map (dissoc (deps-reader/read-deps config-files) :aliases)]
-    (-> (deps/resolve-deps deps-map nil)
-        (deps/make-classpath nil nil))))
+(defn- get-classpath
+  ([]
+   (get-classpath nil))
+  ([alias-kws]
+   (let [{:keys [config-files]} (deps-reader/clojure-env)
+         deps-map (deps-reader/read-deps config-files)
+         args-map (deps/combine-aliases deps-map alias-kws)]
+     (-> (deps/resolve-deps deps-map args-map)
+       (deps/make-classpath nil args-map)))))
 
 (defn- javac-command [classpath compile-path paths opts]
   (into `["-cp" ~classpath ~@opts "-d" ~(str compile-path)]
         (map str paths)))
 
-(defn- javac* [^JavaCompiler compiler source-dir compile-dir opts]
+(defn- javac* [^JavaCompiler compiler source-dir compile-dir {:keys [alias-kws javac-options]}]
   (let [source-dir (Paths/get source-dir (make-array String 0))
         compile-dir (Paths/get compile-dir (make-array String 0))]
     (binding [*java-paths* (transient [])]
@@ -56,7 +60,7 @@
                           (make-file-visitor compiler source-dir compile-dir visit-path))
       (let [java-paths (persistent! *java-paths*)]
         (when (seq java-paths)
-          (let [javac-command (javac-command (get-classpath) compile-dir java-paths opts)]
+          (let [javac-command (javac-command (get-classpath alias-kws) compile-dir java-paths javac-options)]
             (let [compiler-out (ByteArrayOutputStream.)
                   compiler-err (ByteArrayOutputStream.)]
               (.run compiler nil compiler-out compiler-err (into-array String javac-command))
@@ -67,18 +71,20 @@
   "Compiles java source files found in the \"source-dir\" directory.
   - source-dir: The path of a directory containing java source files.
   - compile-path: The path to the directory where .class file are emitted.
-  - javac-options: A vector of the options to be used when invoking the javac command."
+  - javac-options: A vector of the options to be used when invoking the javac command.
+  - alias-kws: A vector of the alias keywords on deps.edn to be used when getting classpath."
   ([source-dir]
    (javac source-dir nil))
-  ([source-dir {:keys [compile-path javac-options]
-                :or {compile-path "target/classes"}}]
+  ([source-dir {:keys [alias-kws compile-path javac-options]
+                :or {compile-path "target/classes"}
+                :as options}]
    (let [compile-path (if (instance? Path compile-path)
                         (str compile-path)
                         compile-path)
          compiler (ToolProvider/getSystemJavaCompiler)]
      (when (nil? compiler)
        (throw (ex-info "Java compiler not found" {})))
-     (javac* compiler source-dir compile-path javac-options))))
+     (javac* compiler source-dir compile-path options))))
 
 (comment
   (javac ["src-java"]
