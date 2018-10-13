@@ -21,8 +21,8 @@ Latest release: 0.0.4
 
 ```clojure
 badigeon/badigeon {:git/url "git@github.com:EwenG/badigeon.git"
-                   :sha "4e55dc9a6f1954d7bc37429430dc00d14576a201"
-                   :tag "0.0.3"}
+                   :sha "c32cf11b3ab000454930a38b7bcdc7346a1528e9"
+                   :tag "0.0.4"}
 ```
 
 # API
