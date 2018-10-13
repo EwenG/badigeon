@@ -2,7 +2,7 @@
   (:require [clojure.tools.deps.alpha.util.maven :as maven])
   (:import [java.nio.file Paths Path]))
 
-(def ^:const version "0.0.3")
+(def ^:const version "0.0.4")
 
 (defn relativize-path [^Path root-path ^Path path]
   (if (= root-path path)
