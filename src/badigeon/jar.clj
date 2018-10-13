@@ -256,3 +256,6 @@
   )
 
 ;; AOT compilation, no sources in jar -> possibility to set a custom path (target/classes)
+;; No keyword arguments (tools.deps aliases) to jar because the pom dependencies should be
+;; resolved exactly the same way tools.deps dependencies are resolved and there is no
+;; straightforward mapping from tools.deps aliases to maven.

@@ -1,5 +1,6 @@
 (ns badigeon.doc
   (:require [badigeon.clean :as clean]
+            [badigeon.classpath :as classpath]
             [badigeon.javac :as javac]
             [badigeon.compile :as compile]
             [badigeon.jar :as jar]
@@ -30,9 +31,9 @@
           (.append sb c))))
     (str sb)))
 
-(def vars [#'javac/javac #'clean/clean #'compile/compile #'jar/jar #'pom/sync-pom #'install/install
-           #'prompt/prompt #'prompt/prompt-password #'sign/sign #'deploy/deploy
-           #'bundle/bundle #'bundle/extract-native-dependencies #'bundle/bin-script
+(def vars [#'clean/clean #'classpath/make-classpath #'javac/javac #'compile/compile #'jar/jar
+           #'pom/sync-pom #'install/install #'prompt/prompt #'prompt/prompt-password #'sign/sign
+           #'deploy/deploy #'bundle/bundle #'bundle/extract-native-dependencies #'bundle/bin-script
            #'jlink/jlink #'zip/zip #'war/war-exploded #'war/war #'exec/exec])
 
 (defn var-sym [^clojure.lang.Var v]

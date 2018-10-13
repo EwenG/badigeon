@@ -1,5 +1,6 @@
 (ns badigeon.sample
   (:require [badigeon.clean :as clean]
+            [badigeon.classpath :as classpath]
             [badigeon.javac :as javac]
             [badigeon.compile :as compile]
             [badigeon.jar :as jar]
@@ -23,11 +24,19 @@
                 ;; unless :allow-outside-target? is true
                 :allow-outside-target? false})
 
+  ;; Given a dependencies map and a vector of alias keywords, computes a classpath string
+  (classpath/make-classpath {:deps-map {:paths ["src"]
+                                       :deps {:org.clojure/clojure {:mvn/version "1.9.0"}
+                                              :org.clojure/tools.deps.alpha {:mvn/version "0.5.442"}}
+                                       :aliases {:doc {:extra-paths ["src-doc"]}}}
+                            :alias-keywords [:doc]})
+
   ;; Compile java sources under the src-java directory
   (javac/javac "src-java" {;; Emit class files to the target/classes directory
                            :compile-path "target/classes"
                            ;; Additional options used by the javac command
-                           :compiler-options ["-target" "1.6" "-source" "1.6" "-Xlint:-options"]})
+                           :compiler-options ["-cp" "src:target/classes" "-target" "1.6"
+                                              "-source" "1.6" "-Xlint:-options"]})
 
   ;; AOT compiles the badigeon.main namespace. Badigeon AOT compiles Clojure sources in a fresh classloader, using the clojure.core/compile function. As a consequence, all the namespaces and their dependencies always get recompiled, unlike with the clojure.core/compile function. Beware of side effects triggered while loading the compiled namespaces.
   (compile/compile '[badigeon.main]
@@ -36,7 +45,10 @@
                     ;; Compiler options used by the clojure.core/compile function
                     :compiler-options {:disable-locals-clearing false
                                        :elide-meta [:doc :file :line :added]
-                                       :direct-linking true}})
+                                       :direct-linking true}
+                    ;; The classpath used during AOT compilation is built using the deps.edn file
+                    ;; and the :aot alias
+                    :classpath (classpath/make-classpath {:aliases [:aot]})})
 
   ;; Package the project into a jar file
   (jar/jar 'badigeon/badigeon {:mvn/version "0.0.1-SNAPSHOT"}

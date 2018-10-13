@@ -1,29 +1,38 @@
 # API
 
-## `badigeon.javac/javac`
-
-Arglists: `([source-dir] [source-dir {:keys [compile-path javac-options]}])`
-
-Compiles java source files found in the "source-dir" directory.
-  - source-dir: The path of a directory containing java source files.
-  - compile-path: The path to the directory where .class file are emitted.
-  - javac-options: A vector of the options to be used when invoking the javac command.
-
 ## `badigeon.clean/clean`
 
 Arglists: `([target-directory] [target-directory {:keys [allow-outside-target?]}])`
 
 Delete the target-directory. The directory to delete must not be outside of project root. By default, the directory to delete must either be the directory named "target" or must be inside the directory named "target". Setting the "allow-outside-target?" parameter to true makes deleting directories outside "target" possible.
 
+## `badigeon.classpath/make-classpath`
+
+Arglists: `([] [{:keys [deps-map aliases]}])`
+
+Builds a classpath by using the provided deps spec or, by default, the deps.edn file of the current project. Returns the built classpath as a string.
+  - deps-map: A map with the same format than a deps.edn map. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repositories.
+  - aliases: Alias keywords used while building the classpath.
+
+## `badigeon.javac/javac`
+
+Arglists: `([source-dir] [source-dir {:keys [compile-path javac-options]}])`
+
+Compiles java source files found in the "source-dir" directory. Note that the badigeon.javac/javac functions triggers the start of Clojure agents. You might want to call clojure.core/shutdown-agents to close the agent thread pools.
+  - source-dir: The path of a directory containing java source files.
+  - compile-path: The path to the directory where .class file are emitted.
+  - javac-options: A vector of the options to be used when invoking the javac command. Default to using a "-cp" argument computed using the project deps.edn file (without merging the system-level and user-level deps.edn maps) and a "-d" argument equal to the compile-path.
+
 ## `badigeon.compile/compile`
 
-Arglists: `([namespaces] [namespaces {:keys [compile-path compiler-options], :as options}])`
+Arglists: `([namespaces] [namespaces {:keys [compile-path compiler-options classpath], :as options}])`
 
 AOT compile one or several Clojure namespace(s). Dependencies of the compiled namespaces are
   always AOT compiled too. Namespaces are loaded while beeing compiled so beware of side effects.
   - namespaces: A symbol or a collection of symbols naming one or several Clojure namespaces.
   - compile-path: The path to the directory where .class files are emitted. Default to "target/classes".
   - compiler-options: A map with the same format than clojure.core/\*compiler-options\*.
+  - classpath: The classpath used while AOT compiling. Defaults to a classpath string computed using the deps.edn file of the current project, without merging the system-level and user-level deps.edn maps.
 
 ## `badigeon.jar/jar`
 
@@ -99,7 +108,7 @@ Arglists: `([out-path] [out-path {:keys [deps-map excluded-libs allow-unstable-d
 
 Creates a standalone bundle of the project resources and its dependencies. By default jar dependencies are copied in a "lib" folder, under the ouput directory. Other dependencies (local and git) are copied by copying their :paths content to the root of the output directory. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
   - out-path: The path of the output directory.
-  - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
+  - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repositories.
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
   - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - libs-path: The path of the folder where dependencies are copied, relative to the output folder. Default to "lib".
@@ -178,6 +187,6 @@ Arglists: `([command] [command {:keys [proc-args error-msg]}])`
 
 Synchronously executes the specified command in a separate process. Prints the process output using "clojure.core/print". Throws an exception when the process exit code is not 0.
   - command: The command to be executed.
-  - proc-args: A collection of command arguments.
-  - error-msg: The error message of the exception thrown upon error.
+  - proc-args: A collection of command arguments. Default to no argument.
+  - error-msg: The error message of the exception thrown upon error. Default to "Process execution error".
 

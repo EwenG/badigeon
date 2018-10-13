@@ -1,6 +1,5 @@
 (ns badigeon.javac
-  (:require [clojure.tools.deps.alpha :as deps]
-            [clojure.tools.deps.alpha.reader :as deps-reader])
+  (:require [badigeon.classpath :as classpath])
   (:import [javax.tools ToolProvider JavaCompiler]
            [java.nio.file Path Paths Files FileVisitor FileVisitResult
             FileVisitOption FileSystemLoopException NoSuchFileException]
@@ -36,19 +35,15 @@
     (Files/createDirectories compile-dir (make-array FileAttribute 0))
     (set! *java-paths* (conj! *java-paths* path))))
 
-(defn- get-classpath []
-  (let [{:keys [config-files]} (deps-reader/clojure-env)
-        deps-map (dissoc (deps-reader/read-deps config-files) :aliases)]
-    (-> (deps/resolve-deps deps-map nil)
-        (deps/make-classpath nil nil))))
-
 (defn- javac-command [classpath compile-path paths opts]
-  (into `["-cp" ~classpath ~@opts "-d" ~(str compile-path)]
+  (into `[~@(when classpath ["-cp" classpath]) ~@opts "-d" ~(str compile-path)]
         (map str paths)))
 
 (defn- javac* [^JavaCompiler compiler source-dir compile-dir opts]
   (let [source-dir (Paths/get source-dir (make-array String 0))
-        compile-dir (Paths/get compile-dir (make-array String 0))]
+        compile-dir (Paths/get compile-dir (make-array String 0))
+        provided-classpath? (some #(= "-cp" %) opts)
+        the-classpath (when-not provided-classpath? (classpath/make-classpath))]
     (binding [*java-paths* (transient [])]
       (Files/walkFileTree source-dir
                           (EnumSet/of FileVisitOption/FOLLOW_LINKS)
@@ -56,7 +51,8 @@
                           (make-file-visitor compiler source-dir compile-dir visit-path))
       (let [java-paths (persistent! *java-paths*)]
         (when (seq java-paths)
-          (let [javac-command (javac-command (get-classpath) compile-dir java-paths opts)]
+          ;; This starts Clojure agents. We might need to call shutdown-agents after this
+          (let [javac-command (javac-command the-classpath compile-dir java-paths opts)]
             (let [compiler-out (ByteArrayOutputStream.)
                   compiler-err (ByteArrayOutputStream.)]
               (.run compiler nil compiler-out compiler-err (into-array String javac-command))
@@ -64,10 +60,10 @@
               (print (str compiler-err)))))))))
 
 (defn javac
-  "Compiles java source files found in the \"source-dir\" directory.
+  "Compiles java source files found in the \"source-dir\" directory. Note that the badigeon.javac/javac functions triggers the start of Clojure agents. You might want to call clojure.core/shutdown-agents to close the agent thread pools.
   - source-dir: The path of a directory containing java source files.
   - compile-path: The path to the directory where .class file are emitted.
-  - javac-options: A vector of the options to be used when invoking the javac command."
+  - javac-options: A vector of the options to be used when invoking the javac command. Default to using a \"-cp\" argument computed using the project deps.edn file (without merging the system-level and user-level deps.edn maps) and a \"-d\" argument equal to the compile-path."
   ([source-dir]
    (javac source-dir nil))
   ([source-dir {:keys [compile-path javac-options]
@@ -81,7 +77,7 @@
      (javac* compiler source-dir compile-path javac-options))))
 
 (comment
-  (javac ["src-java"]
+  (javac "src-java"
          {:compile-path "target/classes"
           :javac-options ["-target" "1.6" "-source" "1.6" "-Xlint:-options"]})
   )

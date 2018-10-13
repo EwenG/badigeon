@@ -1,26 +1,31 @@
 (ns badigeon.compile
+  (:require [badigeon.classpath :as classpath]
+            [clojure.java.io :as io])
   (:refer-clojure :exclude [compile])
   (:import [java.nio.file Path Paths Files]
            [java.nio.file.attribute FileAttribute]
            [java.io File]
            [java.net URL URI URLClassLoader]))
 
-(defn- do-compile
-  ([namespaces]
-   (do-compile namespaces nil))
-  ([namespaces {:keys [compile-path compiler-options]}]
-   (let [namespaces (if (coll? namespaces)
-                      namespaces
-                      [namespaces])
-         compile-path (or compile-path "target/classes")
-         compile-path (if (string? compile-path)
-                        (Paths/get compile-path (make-array String 0))
-                        compile-path)]
-     (Files/createDirectories compile-path (make-array FileAttribute 0))
-     (binding [*compile-path* (str compile-path)
-               *compiler-options* (or compiler-options *compiler-options*)]
-       (doseq [namespace namespaces]
-         (clojure.core/compile namespace))))))
+(defn do-compile->string [namespaces options]
+  (format
+   "(let [namespaces (quote %s)
+          {:keys [compile-path compiler-options] :as options} (quote %s)
+          namespaces (if (coll? namespaces)
+                       namespaces
+                       [namespaces])
+          compile-path (or compile-path \"target/classes\")
+          compile-path (if (string? compile-path)
+                         (java.nio.file.Paths/get compile-path (make-array String 0))
+                         compile-path)]
+      (java.nio.file.Files/createDirectories 
+       compile-path (make-array java.nio.file.attribute.FileAttribute 0))
+      (binding [*compile-path* (str compile-path)
+                *compiler-options* (or compiler-options *compiler-options*)]
+        (doseq [namespace namespaces]
+          (clojure.core/compile namespace)))
+      (clojure.core/shutdown-agents))"
+   namespaces options))
 
 (defn classpath->paths [classpath]
   (when classpath
@@ -34,28 +39,23 @@
        (map #(.toUri ^Path %))
        (map #(.toURL ^URI %))))
 
-(defn -main [namespaces options]
-  (let [namespaces (read-string namespaces)
-        options (read-string options)]
-    (do-compile namespaces options)
-    (clojure.core/shutdown-agents)))
-
 (defn compile
   "AOT compile one or several Clojure namespace(s). Dependencies of the compiled namespaces are
   always AOT compiled too. Namespaces are loaded while beeing compiled so beware of side effects.
   - namespaces: A symbol or a collection of symbols naming one or several Clojure namespaces.
   - compile-path: The path to the directory where .class files are emitted. Default to \"target/classes\".
-  - compiler-options: A map with the same format than clojure.core/*compiler-options*."
+  - compiler-options: A map with the same format than clojure.core/*compiler-options*.
+  - classpath: The classpath used while AOT compiling. Defaults to a classpath string computed using the deps.edn file of the current project, without merging the system-level and user-level deps.edn maps."
   ([namespaces]
    (compile namespaces nil))
-  ([namespaces {:keys [compile-path compiler-options] :as options}]
+  ([namespaces {:keys [compile-path compiler-options classpath] :as options}]
    (let [compile-path (or compile-path "target/classes")
          compile-path (if (string? compile-path)
                         (Paths/get compile-path (make-array String 0))
                         compile-path)
          ;; We must ensure early that the compile-path exists otherwise the Clojure Compiler has issues compiling classes / loading classes. I'm not sure why exactly
          _ (Files/createDirectories compile-path (make-array FileAttribute 0))
-         classpath (System/getProperty "java.class.path")
+         classpath (or classpath (classpath/make-classpath))
          classpath-urls (->> classpath classpath->paths paths->urls (into-array URL))
          classloader (URLClassLoader. classpath-urls
                                       (.getParent (ClassLoader/getSystemClassLoader)))
@@ -63,16 +63,16 @@
          main-method (.getMethod
                       main-class "main"
                       (into-array Class [(Class/forName "[Ljava.lang.String;")]))
+         ;; Eval the AOT compile script as a string, otherwise we would need a main method and a way
+         ;; to add the main method namespace to the classpath
+         in-script (do-compile->string (pr-str namespaces) (pr-str options))
          t (Thread. (fn []
                       (.setContextClassLoader (Thread/currentThread) classloader)
                       (.invoke
                        main-method
                        nil
                        (into-array
-                        Object [(into-array String ["--main"
-                                                    "badigeon.compile"
-                                                    (pr-str namespaces)
-                                                    (pr-str options)])]))))]
+                        Object [(into-array String ["--eval" in-script])]))))]
      (.start t)
      (.join t)
      (.close classloader))))
