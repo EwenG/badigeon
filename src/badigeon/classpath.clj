@@ -18,8 +18,8 @@
 
 (comment
   (let [deps-map {:paths ["src"]
-                  :deps {:org.clojure/clojure #:mvn{:version "1.9.0"}
-                         #_#_:org.clojure/tools.deps.alpha #:mvn{:version "0.5.442"}}
+                  :deps {:org.clojure/clojure {:mvn/version "1.9.0"}
+                         #_#_:org.clojure/tools.deps.alpha {:mvn/version "0.5.442"}}
                   :aliases {:doc {:extra-paths ["src-doc"]}}}]
     (make-classpath {:deps-map deps-map #_#_:alias-keywords [:doc]}))
   )
