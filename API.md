@@ -28,7 +28,8 @@ Compiles java source files found in the "source-dir" directory. Note that the ba
 Arglists: `([namespaces] [namespaces {:keys [compile-path compiler-options classpath], :as options}])`
 
 AOT compile one or several Clojure namespace(s). Dependencies of the compiled namespaces are
-  always AOT compiled too. Namespaces are loaded while beeing compiled so beware of side effects.
+  always AOT compiled too, unless they come under an already AOT compiled form. Namespaces are
+  loaded while beeing compiled so beware of side effects.
   - namespaces: A symbol or a collection of symbols naming one or several Clojure namespaces.
   - compile-path: The path to the directory where .class files are emitted. Default to "target/classes".
   - compiler-options: A map with the same format than clojure.core/\*compiler-options\*.
