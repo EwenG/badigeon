@@ -1,3 +1,9 @@
+# 0.0.5
+
+- Document the fact that AOT compiled dependencies do not get AOT compiled again by badigeon.compile/compile
+- Make badigeon.compile/compile to accept java nio Paths
+- Fix badigeon for clojure version < 1.9.0
+
 # 0.0.4
 
 - Update the tools.deps dependency to 0.5.452
