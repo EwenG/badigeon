@@ -18,8 +18,6 @@
           compile-path (if (string? compile-path)
                          (java.nio.file.Paths/get compile-path (make-array String 0))
                          compile-path)]
-      (java.nio.file.Files/createDirectories 
-       compile-path (make-array java.nio.file.attribute.FileAttribute 0))
       (binding [*compile-path* (str compile-path)
                 *compiler-options* (or compiler-options *compiler-options*)]
         (doseq [namespace namespaces]
@@ -41,7 +39,8 @@
 
 (defn compile
   "AOT compile one or several Clojure namespace(s). Dependencies of the compiled namespaces are
-  always AOT compiled too. Namespaces are loaded while beeing compiled so beware of side effects.
+  always AOT compiled too, unless they come under an already AOT compiled form. Namespaces are
+  loaded while beeing compiled so beware of side effects.
   - namespaces: A symbol or a collection of symbols naming one or several Clojure namespaces.
   - compile-path: The path to the directory where .class files are emitted. Default to \"target/classes\".
   - compiler-options: A map with the same format than clojure.core/*compiler-options*.
@@ -53,6 +52,7 @@
          compile-path (if (string? compile-path)
                         (Paths/get compile-path (make-array String 0))
                         compile-path)
+         options (assoc options :compile-path (str compile-path))
          ;; We must ensure early that the compile-path exists otherwise the Clojure Compiler has issues compiling classes / loading classes. I'm not sure why exactly
          _ (Files/createDirectories compile-path (make-array FileAttribute 0))
          classpath (or classpath (classpath/make-classpath))
