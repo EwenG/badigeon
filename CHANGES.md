@@ -1,3 +1,7 @@
+# 0.0.6
+
+- Update to tools.deps.alpha version 0.6.480. Warning: The classifier key of dependencies is not supported anymore by tools.deps.alpha 0.6.480.
+
 # 0.0.5
 
 - Document the fact that AOT compiled dependencies do not get AOT compiled again by badigeon.compile/compile

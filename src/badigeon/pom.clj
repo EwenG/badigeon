@@ -3,7 +3,8 @@
             [clojure.java.io :as io]
             [clojure.zip :as zip]
             [clojure.data.xml.tree :as tree]
-            [clojure.data.xml.event :as event])
+            [clojure.data.xml.event :as event]
+            [clojure.tools.deps.alpha.util.maven :as maven])
   (:import [java.io File Reader ByteArrayOutputStream]
            [java.nio.file Paths]
            [clojure.data.xml.node Element]
@@ -12,24 +13,25 @@
 (xml/alias-uri 'pom "http://maven.apache.org/POM/4.0.0")
 
 (defn- to-dep
-  [[lib {:keys [mvn/version classifier exclusions] :as coord}]]
-  (if version
-    (cond->
-        [::pom/dependency
-         [::pom/groupId (or (namespace lib) (name lib))]
-         [::pom/artifactId (name lib)]
-         [::pom/version version]]
+  [[lib {:keys [mvn/version exclusions] :as coord}]]
+  (let [[group-id artifact-id classifier] (maven/lib->names lib)]
+    (if version
+      (cond->
+          [::pom/dependency
+           [::pom/groupId group-id]
+           [::pom/artifactId artifact-id]
+           [::pom/version version]]
 
-      classifier
-      (conj [::pom/classifier classifier])
+        classifier
+        (conj [::pom/classifier classifier])
 
-      (seq exclusions)
-      (conj [::pom/exclusions
-             (map (fn [excl]
-                    [::pom/exclusion
-                     [::pom/groupId (namespace excl)]
-                     [::pom/artifactId (name excl)]])
-                  exclusions)]))))
+        (seq exclusions)
+        (conj [::pom/exclusions
+               (map (fn [excl]
+                      [::pom/exclusion
+                       [::pom/groupId (namespace excl)]
+                       [::pom/artifactId (name excl)]])
+                    exclusions)])))))
 
 (defn- gen-deps
   [deps]
@@ -108,8 +110,7 @@
   "Creates or updates a pom.xml file at the root of the project. lib is a symbol naming the library the pom.xml file refers to. The groupId attribute of the pom.xml file is the namespace of the symbol \"lib\" if lib is a namespaced symbol, or if its name is an unqualified symbol. The artifactId attribute of the pom.xml file is the name of the \"lib\" symbol. The pom.xml version, dependencies, and repositories attributes are updated using the version, deps and repos parameters."
   [lib {:keys [:mvn/version]} {:keys [deps :mvn/repos]}]
   (let [root-path (Paths/get (System/getProperty "user.dir") (make-array String 0))
-        artifact-id (name lib)
-        group-id (or (namespace lib) artifact-id)
+        [group-id artifact-id classifier] (maven/lib->names lib)
         pom-path (.resolve root-path "pom.xml")
         pom-file (.toFile pom-path)
         pom (if (.exists pom-file)
@@ -124,8 +125,7 @@
 
 (defn make-pom-properties [lib {:keys [:mvn/version]}]
   (let [baos (ByteArrayOutputStream.)
-        artifact-id (name lib)
-        group-id (or (namespace lib) artifact-id)
+        [group-id artifact-id classifier] (maven/lib->names lib)
         properties (Properties.)]
     (.setProperty properties "groupId" group-id)
     (.setProperty properties "artifactId" artifact-id)
@@ -136,7 +136,8 @@
 (comment
   (sync-pom 'badigeon/badigeon
             '{:mvn/version "0.0.1-SNAPSHOT"}
-            '{:deps {org.clojure/clojure {:mvn/version "1.9.0"}
+            '{:deps {org.clojure/clojure {:mvn/version "1.9.0"
+                                          :classifier "slim"}
                      badigeon-deps/badigeon-deps
                      {:local/root "badigeon-deps"}}
               :mvn/repos {"central" {:url "https://repo1.maven.org/maven2/"}

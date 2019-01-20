@@ -47,8 +47,9 @@
       [:url-pattern ~url-pattern]]]))
 
 (defn make-out-path [lib version]
-  (let [artifact-id (name lib)]
-    (utils/make-out-path artifact-id {:mvn/version version})))
+  (let [[group-id artifact-id classifier] (maven/lib->names lib)]
+    (utils/make-out-path artifact-id `{:mvn/version version
+                                       ~@(when classifier [:classifier classifier]) ~@[]})))
 
 (defn war-exploded
   "Creates an exploded war directory. The produced war can be run on legacy java servers such as Tomcat. This function AOT compiles the provided servlet-namespace. The servlet-namespace must contain a :gen-class directive implementing an HttpServlet.

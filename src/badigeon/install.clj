@@ -18,18 +18,15 @@
          session (maven/make-session system local-repo)
          artifact (maven/coord->artifact lib maven-coords)
          artifact (.setFile artifact (io/file file-path))
-         pom-artifact (maven/coord->artifact lib (-> maven-coords
-                                                     (assoc :extension "pom")
-                                                     (dissoc :classifier)))
+         pom-artifact (maven/coord->artifact lib (assoc maven-coords :extension "pom"))
          pom-artifact (.setFile pom-artifact (io/file pom-file-path))]
      (.install system session (-> (InstallRequest.)
                                   (.addArtifact artifact)
                                   (.addArtifact pom-artifact))))))
 
 (comment
-  (install 'badigeon/badigeon
-           {:mvn/version badigeon.utils/version
-            :classifier "cl"}
+  (install 'badigeon/badigeon$cl
+           {:mvn/version badigeon.utils/version}
            "target/badigeong-0.0.1-SNAPSHOT-cl.jar"
            "pom.xml")
   )

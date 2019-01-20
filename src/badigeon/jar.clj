@@ -3,7 +3,8 @@
             [badigeon.pom :as pom]
             [badigeon.utils :as utils]
             [clojure.string :as string]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [clojure.tools.deps.alpha.util.maven :as maven])
   (:import [java.nio.file Path Paths Files]
            [java.util EnumSet]
            [java.util.jar Manifest JarEntry JarOutputStream]
@@ -173,15 +174,18 @@
      :or {exclusion-predicate default-exclusion-predicate}
      :as options}]
    (let [root-path (Paths/get (System/getProperty "user.dir") (make-array String 0))
-         artifact-id (name lib)
-         group-id (or (namespace lib) artifact-id)
+         [group-id artifact-id classifier] (maven/lib->names lib)
          inclusion-path (or inclusion-path
                             (partial default-inclusion-path group-id artifact-id))
          _ (when out-path (when-not (.endsWith (str out-path) ".jar")
                             (throw (ex-info "out-path must be a jar file"
                                             {:out-path out-path}))))
          out-path (or out-path (utils/make-out-path
-                                artifact-id (assoc maven-coords :extension "jar")))
+                                artifact-id
+                                (merge
+                                 maven-coords
+                                 `{:extension "jar"
+                                   ~@(when classifier [:classifier classifier]) ~@[]})))
          out-path (if (string? out-path)
                     (Paths/get out-path (make-array String 0))
                     out-path)

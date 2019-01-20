@@ -27,7 +27,7 @@
   ;; Given a dependencies map and a vector of alias keywords, computes a classpath string
   (classpath/make-classpath {:deps-map {:paths ["src"]
                                        :deps {:org.clojure/clojure {:mvn/version "1.9.0"}
-                                              :org.clojure/tools.deps.alpha {:mvn/version "0.5.442"}}
+                                              :org.clojure/tools.deps.alpha {:mvn/version "0.6.480"}}
                                        :aliases {:doc {:extra-paths ["src-doc"]}}}
                             :alias-keywords [:doc]})
 

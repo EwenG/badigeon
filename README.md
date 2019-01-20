@@ -35,7 +35,7 @@ badigeon/badigeon {:git/url "https://github.com/EwenG/badigeon.git"
 
 ## License
 
-Copyright 2018 Ewen Grosjean.
+Copyright 2019 Ewen Grosjean.
 
 The use and distribution terms for this software are covered by the
 Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0)

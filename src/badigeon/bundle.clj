@@ -3,7 +3,8 @@
             [clojure.tools.deps.alpha.reader :as deps-reader]
             [clojure.java.io :as io]
             [badigeon.utils :as utils]
-            [clojure.string :as string])
+            [clojure.string :as string]
+            [clojure.tools.deps.alpha.util.maven :as maven])
   (:import [java.nio.file Path Paths Files
             FileVisitor FileVisitOption FileVisitResult
             FileSystemLoopException NoSuchFileException FileAlreadyExistsException
@@ -132,8 +133,9 @@
            (copy-directory path out-path)))))))
 
 (defn make-out-path [lib version]
-  (let [artifact-id (name lib)]
-    (utils/make-out-path artifact-id {:mvn/version version})))
+  (let [[group-id artifact-id classifier] (maven/lib->names lib)]
+    (utils/make-out-path artifact-id `{:mvn/version ~version
+                                       ~@(when classifier [:classifier classifier]) ~@[]})))
 
 (defn bundle
   "Creates a standalone bundle of the project resources and its dependencies. By default jar dependencies are copied in a \"lib\" folder, under the ouput directory. Other dependencies (local and git) are copied by copying their :paths content to the root of the output directory. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
