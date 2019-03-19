@@ -94,7 +94,7 @@
         ;; Prompt for a password using the process standard input and without echoing.
         password (badigeon.prompt/prompt-password "Password: ")]
     (badigeon.deploy/deploy
-     'badigeon/badigeon {:mvn/version "0.0.1-SNAPSHOT"}
+     'badigeon/badigeon "0.0.1-SNAPSHOT"
      artifacts
      {;; :id is used to match the repository in the ~/.m2/settings.xml for credentials when no credentials are explicitly provided.
       :id "clojars"
