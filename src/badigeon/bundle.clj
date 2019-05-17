@@ -68,7 +68,8 @@
     #"\.dylib$"
     #"\.dll$"
     #"\.a$"
-    #"\.lib$"})
+    #"\.lib$"
+    #"\.scx$"})
 
 (defn- do-extract-native-dependencies
   ([native-prefix coords out-path]
