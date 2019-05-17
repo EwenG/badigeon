@@ -60,7 +60,15 @@
             FileVisitResult/SKIP_SUBTREE
             :else (throw exception)))))
 
-(def ^:const native-extensions #{".so" ".dylib" ".dll" ".a" ".lib"})
+(def ^:const native-extensions
+  #{#"\.so$"
+    #"\.so.[0-9]+$"
+    #"\.so\.[0-9]+\.[0-9]+$"
+    #"\.so\.[0-9]+\.[0-9]+\.[0-9]+$"
+    #"\.dylib$"
+    #"\.dll$"
+    #"\.a$"
+    #"\.lib$"})
 
 (defn- do-extract-native-dependencies
   ([native-prefix coords out-path]
@@ -79,7 +87,7 @@
                  entries (enumeration-seq (.entries jar-file))]
              (doseq [^JarEntry entry entries]
                (let [entry-path (.getName entry)]
-                 (when (and (some #(.endsWith entry-path %) native-extensions)
+                 (when (and (some #(re-find % entry-path) native-extensions)
                             (.startsWith entry-path (str native-prefix)))
                    (let [entry-path (.relativize native-prefix (Paths/get (.getName entry) (make-array String 0)))
                          f-path (.resolve native-path entry-path)]
