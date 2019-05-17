@@ -1,3 +1,9 @@
+# 0.0.7
+
+- Add a ":native-extensions" option to badigeon.bundle/extract-native-dependencies
+- badigeon.bundle/extract-native-dependencies now recognizes more native extensions by default (https://github.com/EwenG/badigeon/pull/5)
+- Update to tools.deps.alpha version 0.6.496
+
 # 0.0.6
 
 - Update to tools.deps.alpha version 0.6.480. Warning: The classifier key of dependencies is not supported anymore by tools.deps.alpha 0.6.480.
