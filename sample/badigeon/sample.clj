@@ -127,7 +127,9 @@
                                          ;; The directory where native dependencies are copied.
                                          :native-path "lib"
                                          ;; The paths where native dependencies should be searched. The native-prefix is excluded from the output path of the native dependency.
-                                         :native-prefixes {'org.lwjgl.lwjgl/lwjgl-platform ""}})
+                                         :native-prefixes {'org.lwjgl.lwjgl/lwjgl-platform ""}
+                                         ;; A collection of native extension regexp. Files which name match one of these regexps are considered a native dependency. Default to badigeon.bundle/native-extensions.
+                                         :native-extensions #{#"\.so$"}})
 
     ;; Requires a JDK9+
     ;; Embeds a custom JRE runtime into the bundle.
