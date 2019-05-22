@@ -73,25 +73,29 @@
     #"\.scx$"})
 
 (defn- do-extract-native-dependencies
-  [native-prefix {:keys [paths]} ^Path out-path ^Path native-path extensions]
+  [native-prefix path ^Path out-path ^Path native-path extensions]
   (let [^Path native-prefix (if (instance? Path native-prefix)
                               native-prefix
                               (Paths/get (str native-prefix) (make-array String 0)))
-        native-path (.resolve out-path native-path)]
-    (doseq [^String path paths]
-      (let [f (io/file path)]
-        (when (and (.exists f) (not (.isDirectory f))
-                   (.endsWith path ".jar"))
-          (let [jar-file (JarFile. path)
-                entries (enumeration-seq (.entries jar-file))]
-            (doseq [^JarEntry entry entries]
-              (let [entry-path (.getName entry)]
-                (when (and (some #(re-find % entry-path) extensions)
-                           (.startsWith entry-path (str native-prefix)))
-                  (let [entry-path (.relativize native-prefix (Paths/get (.getName entry) (make-array String 0)))
-                        f-path (.resolve native-path entry-path)]
-                    (Files/createDirectories (.getParent f-path) (make-array FileAttribute 0))
-                    (io/copy (.getInputStream jar-file entry) (.toFile f-path))))))))))))
+        native-path (.resolve out-path native-path)
+        ^Path path (if (string? path)
+                     (Paths/get path (make-array String 0))
+                     path)
+        f (.toFile path)]
+    (when (and (.exists f) (not (.isDirectory f))
+               (.endsWith (str path) ".jar"))
+      (let [jar-file (JarFile. (str path))
+            entries (enumeration-seq (.entries jar-file))]
+        (doseq [^JarEntry entry entries]
+          (let [entry-path (.getName entry)]
+            (when (and (some #(re-find % entry-path) extensions)
+                       (.startsWith entry-path (str native-prefix)))
+              (let [entry-path (.relativize
+                                native-prefix
+                                (Paths/get (.getName entry) (make-array String 0)))
+                    f-path (.resolve native-path entry-path)]
+                (Files/createDirectories (.getParent f-path) (make-array FileAttribute 0))
+                (io/copy (.getInputStream jar-file entry) (.toFile f-path))))))))))
 
 (defn copy-directory [from to-directory]
   (let [to-directory (if (string? to-directory)
@@ -212,9 +216,43 @@
      (Files/createDirectories (.resolve out-path native-path) (make-array FileAttribute 0))
      (doseq [[lib {:keys [paths] :as coords}] resolved-deps]
        (when (contains? native-prefixes lib)
-         (do-extract-native-dependencies
-          (get native-prefixes lib)
-          coords out-path native-path native-extensions)))
+         (doseq [path paths]
+           (do-extract-native-dependencies
+            (get native-prefixes lib)
+            path out-path native-path native-extensions))))
+     out-path)))
+
+(defn extract-native-dependencies-from-file
+  "Extract native dependencies (.so, .dylib, .dll, .a, .lib, .scx files) from a jar file. By default native dependencies are extracted to a \"lib\" folder under the output directory.
+  - out-path: The path of the output directory.
+  - file-path: The path of jar file from which the native dependencies are extracted.
+  - native-path: The path of the folder where native dependencies are extracted, relative to the output folder. Default to \"lib\".
+  - native-prefix: A map from libs (symbol) to a path prefix (string). Libs with a specified native-prefix are searched for native dependencies under the path of the native prefix only. The native-prefix is excluded from the output path of the native dependency.
+  - native-extensions: A collection of native extension regexp. Files which name match one of these regexps are considered a native dependency. Default to badigeon.bundle/native-extensions."
+  ([out-path file-path]
+   (extract-native-dependencies-from-file out-path file-path nil))
+  ([out-path file-path {:keys [native-path
+                               native-prefix
+                               native-extensions] :as opts}]
+   (let [^Path out-path (if (string? out-path)
+                          (Paths/get out-path (make-array String 0))
+                          out-path)
+         ^Path file-path (if (string? file-path)
+                           (Paths/get file-path (make-array String 0))
+                           file-path)
+         ^Path native-path (if native-path
+                             (if (string? native-path)
+                               (Paths/get native-path (make-array String 0))
+                               native-path)
+                             (Paths/get "lib" (make-array String 0)))
+         native-prefix (or native-prefix "")
+         native-extensions (if (contains? opts :native-extensions)
+                             native-extensions
+                             badigeon.bundle/native-extensions)]
+     (Files/createDirectories
+      (.resolve out-path native-path) (make-array FileAttribute 0))
+     (do-extract-native-dependencies
+      native-prefix file-path out-path native-path native-extensions)
      out-path)))
 
 (def ^:const windows-like :windows-like)
