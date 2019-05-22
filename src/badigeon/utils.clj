@@ -49,3 +49,19 @@
 
 (defn local-dep? [{:keys [:local/root]}]
   root)
+
+(defn jar-entry->jar-file-path [jar-entry]
+  (when jar-entry
+    (let [jar-entry (str jar-entry)
+          jar-file-path (if (.startsWith jar-entry "jar:")
+                          (.substring jar-entry (count "jar:"))
+                          jar-entry)
+          jar-file-path (if (.startsWith jar-file-path "file:")
+                          (.substring jar-file-path (count "file:"))
+                          jar-file-path)
+          entry-split-index (.lastIndexOf jar-file-path "!")
+          entry-split-index (if (= -1 entry-split-index)
+                              (count jar-file-path)
+                              entry-split-index)
+          jar-file-path (.substring jar-file-path 0 entry-split-index)]
+      jar-file-path)))
