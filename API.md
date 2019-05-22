@@ -116,14 +116,15 @@ Creates a standalone bundle of the project resources and its dependencies. By de
 
 ## `badigeon.bundle/extract-native-dependencies`
 
-Arglists: `([out-path] [out-path {:keys [deps-map allow-unstable-deps? native-path native-prefixes]}])`
+Arglists: `([out-path] [out-path {:keys [deps-map allow-unstable-deps? native-path native-prefixes native-extensions], :as opts}])`
 
-Extract native dependencies (.so, .dylib, .dll, .a, .lib files) from jar dependencies. By default native dependencies are extracted to a "lib" folder under the output directory.
+Extract native dependencies (.so, .dylib, .dll, .a, .lib, .scx files) from jar dependencies. By default native dependencies are extracted to a "lib" folder under the output directory.
   - out-path: The path of the output directory.
   - deps-map: A map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for native dependencies. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
   - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - native-path: The path of the folder where native dependencies are extracted, relative to the output folder. Default to "lib".
   - native-prefixes: A map from libs (symbol) to a path prefix (string). Libs with a specified native-prefix are searched for native dependencies under the path of the native prefix only. The native-prefix is excluded from the output path of the native dependency.
+  - native-extensions: A collection of native extension regexp. Files which name match one of these regexps are considered a native dependency. Default to badigeon.bundle/native-extensions.
 
 ## `badigeon.bundle/bin-script`
 
