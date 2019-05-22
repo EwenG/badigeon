@@ -198,29 +198,30 @@
                      native-path
                      native-prefixes
                      native-extensions] :as opts}]
-   (let [deps-map (update deps-map :mvn/repos utils/with-standard-repos)
-         resolved-deps (deps/resolve-deps deps-map nil)
-         ^Path out-path (if (string? out-path)
-                          (Paths/get out-path (make-array String 0))
-                          out-path)
-         ^Path native-path (if native-path
-                             (if (string? native-path)
-                               (Paths/get native-path (make-array String 0))
-                               native-path)
-                             (Paths/get "lib" (make-array String 0)))
-         native-extensions (if (contains? opts :native-extensions)
-                             native-extensions
-                             badigeon.bundle/native-extensions)]
-     (when-not allow-unstable-deps?
-       (utils/check-for-unstable-deps #(utils/snapshot-dep? %) resolved-deps))
-     (Files/createDirectories (.resolve out-path native-path) (make-array FileAttribute 0))
-     (doseq [[lib {:keys [paths] :as coords}] resolved-deps]
-       (when (contains? native-prefixes lib)
-         (doseq [path paths]
-           (do-extract-native-dependencies
-            (get native-prefixes lib)
-            path out-path native-path native-extensions))))
-     out-path)))
+   (when out-path
+     (let [deps-map (update deps-map :mvn/repos utils/with-standard-repos)
+           resolved-deps (deps/resolve-deps deps-map nil)
+           ^Path out-path (if (string? out-path)
+                            (Paths/get out-path (make-array String 0))
+                            out-path)
+           ^Path native-path (if native-path
+                               (if (string? native-path)
+                                 (Paths/get native-path (make-array String 0))
+                                 native-path)
+                               (Paths/get "lib" (make-array String 0)))
+           native-extensions (if (contains? opts :native-extensions)
+                               native-extensions
+                               badigeon.bundle/native-extensions)]
+       (when-not allow-unstable-deps?
+         (utils/check-for-unstable-deps #(utils/snapshot-dep? %) resolved-deps))
+       (Files/createDirectories (.resolve out-path native-path) (make-array FileAttribute 0))
+       (doseq [[lib {:keys [paths] :as coords}] resolved-deps]
+         (when (contains? native-prefixes lib)
+           (doseq [path paths]
+             (do-extract-native-dependencies
+              (get native-prefixes lib)
+              path out-path native-path native-extensions))))
+       out-path))))
 
 (defn extract-native-dependencies-from-file
   "Extract native dependencies (.so, .dylib, .dll, .a, .lib, .scx files) from a jar file. By default native dependencies are extracted to a \"lib\" folder under the output directory.
@@ -234,26 +235,27 @@
   ([out-path file-path {:keys [native-path
                                native-prefix
                                native-extensions] :as opts}]
-   (let [^Path out-path (if (string? out-path)
-                          (Paths/get out-path (make-array String 0))
-                          out-path)
-         ^Path file-path (if (string? file-path)
-                           (Paths/get file-path (make-array String 0))
-                           file-path)
-         ^Path native-path (if native-path
-                             (if (string? native-path)
-                               (Paths/get native-path (make-array String 0))
-                               native-path)
-                             (Paths/get "lib" (make-array String 0)))
-         native-prefix (or native-prefix "")
-         native-extensions (if (contains? opts :native-extensions)
-                             native-extensions
-                             badigeon.bundle/native-extensions)]
-     (Files/createDirectories
-      (.resolve out-path native-path) (make-array FileAttribute 0))
-     (do-extract-native-dependencies
-      native-prefix file-path out-path native-path native-extensions)
-     out-path)))
+   (when (and out-path file-path)
+     (let [^Path out-path (if (string? out-path)
+                            (Paths/get out-path (make-array String 0))
+                            out-path)
+           ^Path file-path (if (string? file-path)
+                             (Paths/get file-path (make-array String 0))
+                             file-path)
+           ^Path native-path (if native-path
+                               (if (string? native-path)
+                                 (Paths/get native-path (make-array String 0))
+                                 native-path)
+                               (Paths/get "lib" (make-array String 0)))
+           native-prefix (or native-prefix "")
+           native-extensions (if (contains? opts :native-extensions)
+                               native-extensions
+                               badigeon.bundle/native-extensions)]
+       (Files/createDirectories
+        (.resolve out-path native-path) (make-array FileAttribute 0))
+       (do-extract-native-dependencies
+        native-prefix file-path out-path native-path native-extensions)
+       out-path))))
 
 (def ^:const windows-like :windows-like)
 (def ^:const posix-like :posix-like)
