@@ -1,11 +1,15 @@
 (ns badigeon.compile
   (:require [badigeon.classpath :as classpath]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [clojure.tools.deps.alpha :as deps]
+            [clojure.tools.deps.alpha.reader :as deps-reader]
+            [badigeon.utils :as utils])
   (:refer-clojure :exclude [compile])
   (:import [java.nio.file Path Paths Files]
            [java.nio.file.attribute FileAttribute]
            [java.io File]
-           [java.net URL URI URLClassLoader]))
+           [java.net URL URI URLClassLoader]
+           [java.util.jar JarFile JarEntry]))
 
 (defn do-compile->string [namespaces options]
   (format
@@ -77,10 +81,58 @@
      (.join t)
      (.close classloader))))
 
+(defn- extract-classes-from-dependency [path ^Path out-path]
+  (let [^Path path (if (string? path)
+                     (Paths/get path (make-array String 0))
+                     path)
+        f (.toFile path)]
+    (when (and (.exists f) (not (.isDirectory f))
+               (.endsWith (str path) ".jar"))
+      (let [jar-file (JarFile. (str path))
+            entries (enumeration-seq (.entries jar-file))]
+        (doseq [^JarEntry entry entries]
+          (let [entry-path (str (.getName entry))]
+            (when (.endsWith entry-path ".class")
+              (let [f-path (.resolve out-path entry-path)]
+                (Files/createDirectories (.getParent f-path) (make-array FileAttribute 0))
+                (io/copy (.getInputStream jar-file entry) (.toFile f-path))))))))))
+
+(defn extract-classes-from-dependencies
+  "Extract classes from jar dependencies. By default, classes are extracted the \"target/classes\" folder. This function can be used to circumvent the fact that badigeon.compile/compile does not compile dependencies that are already AOT, such as Clojure itself.
+  - out-path: The path of the output directory.
+  - deps-map: A map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for native dependencies. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
+  - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
+  - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false."
+  ([]
+   (extract-classes-from-dependencies nil))
+  ([{:keys [out-path
+            deps-map
+            excluded-libs
+            allow-unstable-deps?] :as opts}]
+   (let [out-path (or out-path "target/classes")
+         out-path (if (string? out-path)
+                    (Paths/get out-path (make-array String 0))
+                    out-path)
+         deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
+         deps-map (update deps-map :mvn/repos utils/with-standard-repos)
+         resolved-deps (deps/resolve-deps deps-map nil)]
+     (when-not allow-unstable-deps?
+       (utils/check-for-unstable-deps #(or (utils/snapshot-dep? %) (utils/local-dep? %)) resolved-deps))
+     (Files/createDirectories out-path (make-array FileAttribute 0))
+     (doseq [[lib {:keys [paths] :as coords}] resolved-deps]
+       (when-not (contains? excluded-libs lib)
+         (doseq [path paths]
+           (extract-classes-from-dependency path out-path))))
+     out-path)))
+
 (comment
   
   (compile '[badigeon.main] {:compile-path "target/classes"
                              :compiler-options {:elide-meta [:doc :file :line :added]}})
+
+  (extract-classes-from-dependencies
+   {:deps-map (assoc (deps-reader/slurp-deps "deps.edn") :deps '{org.clojure/clojure {:mvn/version "1.9.0"}})
+    :excluded-libs #{'org.clojure/clojure}})
   
   )
 
