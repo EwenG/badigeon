@@ -138,10 +138,11 @@
    (doseq [path paths]
      (let [f (io/file path)]
        (when (.exists f)
-         (if (and (not (.isDirectory f)) (.endsWith (str path) ".jar"))
-           (let [to (-> out-path (.resolve libs-path) (.resolve (.getName f)))]
-             (copy-file path to))
-           (copy-directory path out-path)))))))
+         (cond (and (not (.isDirectory f)) (.endsWith (str path) ".jar"))
+               (let [to (-> out-path (.resolve libs-path) (.resolve (.getName f)))]
+                 (copy-file path to))
+               (.isDirectory f)
+               (copy-directory path out-path)))))))
 
 (defn make-out-path [lib version]
   (let [[group-id artifact-id classifier] (maven/lib->names lib)]
