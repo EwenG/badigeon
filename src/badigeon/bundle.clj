@@ -16,27 +16,40 @@
 (def ^{:dynamic true :private true :tag Path} *out-path* nil)
 (def ^{:dynamic true :private true} *copied-paths* nil)
 
+(defn post-visit-directory [^Path root-path ^Path to dir exception]
+  (when-not exception
+    (let [new-dir (.resolve to (.relativize root-path dir))]
+      (Files/setLastModifiedTime new-dir
+                                 (Files/getLastModifiedTime
+                                  dir (make-array LinkOption 0)))))
+  FileVisitResult/CONTINUE)
+
+(defn pre-visit-directory [^Path root-path ^Path to dir attrs]
+  (let [new-dir (.resolve to (.relativize root-path dir))]
+    (try
+      (Files/copy
+       ^Path dir new-dir
+       ^"[Ljava.nio.file.StandardCopyOption;" (into-array
+                                               StandardCopyOption
+                                               [StandardCopyOption/COPY_ATTRIBUTES]))
+      (catch FileAlreadyExistsException e
+        ;; ignore
+        nil))
+    FileVisitResult/CONTINUE))
+
+(defn visit-file-failed [file exception]
+  (cond (instance? FileSystemLoopException exception)
+        FileVisitResult/SKIP_SUBTREE
+        (instance? NoSuchFileException exception)
+        FileVisitResult/SKIP_SUBTREE
+        :else (throw exception)))
+
 (defn- make-directory-file-visitor [^Path root-path ^Path to]
   (reify FileVisitor
     (postVisitDirectory [_ dir exception]
-      (when-not exception
-        (let [new-dir (.resolve to (.relativize root-path dir))]
-          (Files/setLastModifiedTime new-dir
-                                     (Files/getLastModifiedTime
-                                      dir (make-array LinkOption 0)))))
-      FileVisitResult/CONTINUE)
+      (post-visit-directory root-path to dir exception))
     (preVisitDirectory [_ dir attrs]
-      (let [new-dir (.resolve to (.relativize root-path dir))]
-        (try
-          (Files/copy
-           ^Path dir new-dir
-           ^"[Ljava.nio.file.StandardCopyOption;" (into-array
-                                                   StandardCopyOption
-                                                   [StandardCopyOption/COPY_ATTRIBUTES]))
-          (catch FileAlreadyExistsException e
-            ;; ignore
-            nil))
-        FileVisitResult/CONTINUE))
+      (pre-visit-directory root-path to dir attrs))
     (visitFile [_ path attrs]
       (let [new-file (.resolve to (.relativize root-path path))
             relative-path (when (some? *out-path*) (.relativize *out-path* new-file))]
@@ -54,11 +67,7 @@
                                                   StandardCopyOption/REPLACE_EXISTING]))
         FileVisitResult/CONTINUE))
     (visitFileFailed [_ file exception]
-      (cond (instance? FileSystemLoopException exception)
-            FileVisitResult/SKIP_SUBTREE
-            (instance? NoSuchFileException exception)
-            FileVisitResult/SKIP_SUBTREE
-            :else (throw exception)))))
+      (visit-file-failed file exception))))
 
 (def ^:const native-extensions
   #{#"\.so$"
@@ -108,7 +117,7 @@
                         Integer/MAX_VALUE
                         (make-directory-file-visitor from to-directory))))
 
-(defn copy-file [from to]
+(defn- copy-file [from to]
   (let [^Path to (if (string? to)
                    (utils/make-path to)
                    to)
