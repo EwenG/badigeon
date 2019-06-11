@@ -42,6 +42,9 @@
          (format "%s\n"))))
 
 (defn ^String make-manifest [main manifest-overrides]
+  "Return the content of a MANIFEST.MF file as a string.
+  - main: A namespace to be added to the \"Main\" entry to the manifest. Default to nil.
+  - manifest: A map of additionel entries to the manifest. Values of the manifest map can be maps to represent manifest sections. By default, the manifest contains the \"Created-by\", \"Built-By\" and \"Build-Jdk\" entries."
   (let [manifest-overrides (into {} manifest-overrides)
         manifest (if main
                    (assoc default-manifest "Main-Class" (munge (str main)))
