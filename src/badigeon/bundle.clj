@@ -76,7 +76,7 @@
   [native-prefix path ^Path out-path ^Path native-path extensions]
   (let [^Path native-prefix (if (instance? Path native-prefix)
                               native-prefix
-                              (Paths/get (str native-prefix) (make-array String 0)))
+                              (utils/make-path native-prefix))
         native-path (.resolve out-path native-path)
         ^Path path (if (string? path)
                      (Paths/get path (make-array String 0))
@@ -87,12 +87,11 @@
       (let [jar-file (JarFile. (str path))
             entries (enumeration-seq (.entries jar-file))]
         (doseq [^JarEntry entry entries]
-          (let [entry-path (.getName entry)]
-            (when (and (some #(re-find % entry-path) extensions)
-                       (.startsWith entry-path (.replace (.toString native-prefix) "\\" "/")))
-              (let [entry-path (.relativize
-                                native-prefix
-                                (Paths/get (.getName entry) (make-array String 0)))
+          (let [entry-path-str (.getName entry)
+                entry-path (utils/make-path entry-path-str)]
+            (when (and (some #(re-find % entry-path-str) extensions)
+                       (.startsWith entry-path native-prefix))
+              (let [entry-path (.relativize native-prefix entry-path)
                     f-path (.resolve native-path entry-path)]
                 (Files/createDirectories (.getParent f-path) (make-array FileAttribute 0))
                 (io/copy (.getInputStream jar-file entry) (.toFile f-path))))))))))

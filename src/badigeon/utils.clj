@@ -4,6 +4,9 @@
 
 (def ^:const version "0.0.7")
 
+(defn ^Path make-path [path & paths]
+  (Paths/get (str path) (into-array String (map str paths))))
+
 (defn relativize-path [^Path root-path ^Path path]
   (if (= root-path path)
     (if-let [parent-path (.getParent path)]
