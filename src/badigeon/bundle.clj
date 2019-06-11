@@ -89,7 +89,7 @@
         (doseq [^JarEntry entry entries]
           (let [entry-path (.getName entry)]
             (when (and (some #(re-find % entry-path) extensions)
-                       (.startsWith entry-path (str native-prefix)))
+                       (.startsWith entry-path (.replace (.toString native-prefix) "\\" "/")))
               (let [entry-path (.relativize
                                 native-prefix
                                 (Paths/get (.getName entry) (make-array String 0)))
