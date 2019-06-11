@@ -76,10 +76,18 @@
                        main-method
                        nil
                        (into-array
-                        Object [(into-array String ["--eval" in-script])]))))]
+                        Object [(into-array String ["--eval" in-script])]))))
+         compile-exception (atom nil)
+         ]
+     (.setUncaughtExceptionHandler 
+       t (reify Thread$UncaughtExceptionHandler
+           (^void uncaughtException  [_ ^Thread t ^Throwable e] (reset! compile-exception e))))
      (.start t)
      (.join t)
-     (.close classloader))))
+     (.close classloader)
+     (when-let [exception @compile-exception]
+       (throw (ex-info "Exception during compilation" {} exception)))
+     )))
 
 (defn- extract-classes-from-dependency [path ^Path out-path]
   (let [^Path path (if (string? path)
