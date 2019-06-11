@@ -34,7 +34,7 @@
     (for [path (-> classpath
                    clojure.string/trim
                    (.split File/pathSeparator))]
-      (Paths/get path (make-array String 0)))))
+      (utils/make-path path))))
 
 (defn paths->urls [paths]
   (->> paths
@@ -54,7 +54,7 @@
   ([namespaces {:keys [compile-path compiler-options classpath] :as options}]
    (let [compile-path (or compile-path "target/classes")
          compile-path (if (string? compile-path)
-                        (Paths/get compile-path (make-array String 0))
+                        (utils/make-path compile-path)
                         compile-path)
          options (assoc options :compile-path (str compile-path))
          ;; We must ensure early that the compile-path exists otherwise the Clojure Compiler has issues compiling classes / loading classes. I'm not sure why exactly
@@ -91,7 +91,7 @@
 
 (defn- extract-classes-from-dependency [path ^Path out-path]
   (let [^Path path (if (string? path)
-                     (Paths/get path (make-array String 0))
+                     (utils/make-path path)
                      path)
         f (.toFile path)]
     (when (and (.exists f) (not (.isDirectory f))
@@ -119,7 +119,7 @@
             allow-unstable-deps?] :as opts}]
    (let [out-path (or out-path "target/classes")
          out-path (if (string? out-path)
-                    (Paths/get out-path (make-array String 0))
+                    (utils/make-path out-path)
                     out-path)
          deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)

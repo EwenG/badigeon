@@ -93,9 +93,9 @@
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
          resolved-deps (deps/resolve-deps deps-map nil)
          ^Path out-path (if (string? out-path)
-                          (Paths/get out-path (make-array String 0))
+                          (utils/make-path out-path)
                           out-path)
-         ^Path libs-path (Paths/get "WEB-INF/lib" (make-array String 0))
+         ^Path libs-path (utils/make-path "WEB-INF/lib")
          opts (assoc opts
                      :servlet-class servlet-class
                      :servlet-name servlet-name

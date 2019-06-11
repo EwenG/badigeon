@@ -173,7 +173,7 @@
             allow-all-dependencies?]
      :or {exclusion-predicate default-exclusion-predicate}
      :as options}]
-   (let [root-path (Paths/get (System/getProperty "user.dir") (make-array String 0))
+   (let [root-path (utils/make-path (System/getProperty "user.dir"))
          [group-id artifact-id classifier] (maven/lib->names lib)
          inclusion-path (or inclusion-path
                             (partial default-inclusion-path group-id artifact-id))
@@ -187,7 +187,7 @@
                                  `{:extension "jar"
                                    ~@(when classifier [:classifier classifier]) ~@[]})))
          out-path (if (string? out-path)
-                    (Paths/get out-path (make-array String 0))
+                    (utils/make-path out-path)
                     out-path)
          out-path (if (and (instance? Path out-path) (not (.isAbsolute ^Path out-path)))
                     (.resolve ^Path root-path ^Path out-path)

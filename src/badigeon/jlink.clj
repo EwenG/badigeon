@@ -30,16 +30,16 @@
   ([out-path]
    (jlink out-path nil))
   ([out-path {:keys [jlink-path module-path modules jlink-options]
-              :or {jlink-path (Paths/get "runtime" (make-array String 0))
+              :or {jlink-path (utils/make-path "runtime")
                    modules ["java.base"]
                    jlink-options ["--strip-debug" "--no-man-pages"
                                   "--no-header-files" "--compress=2"]}}]
    (let [java-home (System/getProperty "java.home")
          ^Path out-path (if (string? out-path)
-                          (Paths/get out-path (make-array String 0))
+                          (utils/make-path out-path)
                           out-path)
          ^Path jlink-path (if (string? jlink-path)
-                            (Paths/get jlink-path (make-array String 0))
+                            (utils/make-path jlink-path)
                             jlink-path)
          jlink-path (.resolve out-path jlink-path)
          module-path (or module-path (str java-home File/separator "jmods"))

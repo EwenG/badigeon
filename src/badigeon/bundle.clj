@@ -79,7 +79,7 @@
                               (utils/make-path native-prefix))
         native-path (.resolve out-path native-path)
         ^Path path (if (string? path)
-                     (Paths/get path (make-array String 0))
+                     (utils/make-path path)
                      path)
         f (.toFile path)]
     (when (and (.exists f) (not (.isDirectory f))
@@ -98,10 +98,10 @@
 
 (defn copy-directory [from to-directory]
   (let [to-directory (if (string? to-directory)
-                       (Paths/get to-directory (make-array String 0))
+                       (utils/make-path to-directory)
                        to-directory)
         from (if (string? from)
-               (Paths/get from (make-array String 0))
+               (utils/make-path from)
                from)]
     (Files/walkFileTree from
                         (EnumSet/of FileVisitOption/FOLLOW_LINKS)
@@ -110,10 +110,10 @@
 
 (defn copy-file [from to]
   (let [^Path to (if (string? to)
-                   (Paths/get to (make-array String 0))
+                   (utils/make-path to)
                    to)
         ^Path from (if (string? from)
-                     (Paths/get from (make-array String 0))
+                     (utils/make-path from)
                      from)
         relative-path (when (some? *out-path*) (.relativize *out-path* to))]
     (if (and (some? *copied-paths*)
@@ -132,7 +132,7 @@
 
 (defn- copy-dependency
   ([coords out-path]
-   (copy-dependency coords out-path (Paths/get "lib" (make-array String 0))))
+   (copy-dependency coords out-path (utils/make-path "lib")))
   ([{:keys [paths]} ^Path out-path ^Path libs-path]
    (doseq [path paths]
      (let [f (io/file path)]
@@ -165,13 +165,13 @@
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
          resolved-deps (deps/resolve-deps deps-map nil)
          ^Path out-path (if (string? out-path)
-                          (Paths/get out-path (make-array String 0))
+                          (utils/make-path out-path)
                           out-path)
          ^Path libs-path (if libs-path
                            (if (string? libs-path)
-                             (Paths/get libs-path (make-array String 0))
+                             (utils/make-path libs-path)
                              libs-path)
-                           (Paths/get "lib" (make-array String 0)))]
+                           (utils/make-path "lib"))]
      (when-not allow-unstable-deps?
        (utils/check-for-unstable-deps #(or (utils/snapshot-dep? %) (utils/local-dep? %)) resolved-deps))
      (Files/createDirectories (.resolve out-path libs-path) (make-array FileAttribute 0))
@@ -202,13 +202,13 @@
      (let [deps-map (update deps-map :mvn/repos utils/with-standard-repos)
            resolved-deps (deps/resolve-deps deps-map nil)
            ^Path out-path (if (string? out-path)
-                            (Paths/get out-path (make-array String 0))
+                            (utils/make-path out-path)
                             out-path)
            ^Path native-path (if native-path
                                (if (string? native-path)
-                                 (Paths/get native-path (make-array String 0))
+                                 (utils/make-path native-path)
                                  native-path)
-                               (Paths/get "lib" (make-array String 0)))
+                               (utils/make-path "lib"))
            native-extensions (if (contains? opts :native-extensions)
                                native-extensions
                                badigeon.bundle/native-extensions)]
@@ -237,16 +237,16 @@
                                native-extensions] :as opts}]
    (when (and out-path file-path)
      (let [^Path out-path (if (string? out-path)
-                            (Paths/get out-path (make-array String 0))
+                            (utils/make-path out-path)
                             out-path)
            ^Path file-path (if (string? file-path)
-                             (Paths/get file-path (make-array String 0))
+                             (utils/make-path file-path)
                              file-path)
            ^Path native-path (if native-path
                                (if (string? native-path)
-                                 (Paths/get native-path (make-array String 0))
+                                 (utils/make-path native-path)
                                  native-path)
-                               (Paths/get "lib" (make-array String 0)))
+                               (utils/make-path "lib"))
            native-prefix (or native-prefix "")
            native-extensions (if (contains? opts :native-extensions)
                                native-extensions
@@ -266,10 +266,10 @@
 (defmulti file-separator identity)
 
 (defmethod make-script-path :posix-like [os-type]
-  (Paths/get "bin/run.sh" (make-array String 0)))
+  (utils/make-path "bin/run.sh"))
 
 (defmethod make-script-path :windows-like [os-type]
-  (Paths/get "bin/run.bat" (make-array String 0)))
+  (utils/make-path "bin/run.bat"))
 
 (defmethod make-script-header :posix-like [os-type]
   "#!/bin/sh\n")
@@ -324,10 +324,10 @@
                         jvm-opts []
                         args []}}]
    (let [^Path out-path (if (string? out-path)
-                          (Paths/get out-path (make-array String 0))
+                          (utils/make-path out-path)
                           out-path)
          ^Path script-path (if (string? script-path)
-                             (Paths/get script-path (make-array String 0))
+                             (utils/make-path script-path)
                              script-path)
          script-path (.resolve out-path script-path)
          args (if args

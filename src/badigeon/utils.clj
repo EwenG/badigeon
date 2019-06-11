@@ -18,9 +18,10 @@
   (let [classifier (when classifier (str "-" (name classifier)))
         version (when version (str "-" version))
         extension (when extension (str "." extension))]
-    (Paths/get (System/getProperty "user.dir")
-               (into-array String ["target" (str artifact-id version classifier extension)]))))
-
+    (make-path
+     (System/getProperty "user.dir")
+     "target"
+     (str artifact-id version classifier extension))))
 
 (defn artifact-with-default-extension [{:keys [file-path] :as artifact}]
   (cond (contains? artifact :extension)

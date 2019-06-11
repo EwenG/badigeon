@@ -1,5 +1,6 @@
 (ns badigeon.javac
-  (:require [badigeon.classpath :as classpath])
+  (:require [badigeon.classpath :as classpath]
+            [badigeon.utils :as utils])
   (:import [javax.tools ToolProvider JavaCompiler]
            [java.nio.file Path Paths Files FileVisitor FileVisitResult
             FileVisitOption FileSystemLoopException NoSuchFileException]
@@ -40,8 +41,8 @@
         (map str paths)))
 
 (defn- javac* [^JavaCompiler compiler source-dir compile-dir opts]
-  (let [source-dir (Paths/get source-dir (make-array String 0))
-        compile-dir (Paths/get compile-dir (make-array String 0))
+  (let [source-dir (utils/make-path source-dir)
+        compile-dir (utils/make-path compile-dir)
         provided-classpath? (some #(= "-cp" %) opts)
         the-classpath (when-not provided-classpath? (classpath/make-classpath))]
     (binding [*java-paths* (transient [])]

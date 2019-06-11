@@ -31,10 +31,10 @@
    (zip directory-path nil))
   ([directory-path out-path]
    (let [directory-path (if (string? directory-path)
-                          (Paths/get directory-path (make-array String 0))
+                          (utils/make-path directory-path)
                           directory-path)
          out-path (if (string? out-path)
-                    (Paths/get out-path (make-array String 0))
+                    (utils/make-path out-path)
                     out-path)
          out-path (or out-path (.resolveSibling
                                 ^Path directory-path

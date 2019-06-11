@@ -1,4 +1,5 @@
 (ns badigeon.clean
+  (:require [badigeon.utils :as utils])
   (:import [java.nio.file Path Paths FileVisitor Files FileVisitResult FileVisitOption]))
 
 (defn same-directory? [^Path path1 ^Path path2]
@@ -33,7 +34,7 @@
     (Files/walkFileTree dir (make-file-visitor))))
 
 (defn sanity-check [path allow-outside-target?]
-  (let [root-path (Paths/get (System/getProperty "user.dir") (make-array String 0))
+  (let [root-path (utils/make-path (System/getProperty "user.dir"))
         target-path (.resolve root-path "target")]
     (when (not (is-parent-path? root-path path))
       (throw (IllegalArgumentException. "Cannot delete a directory outside of project root")))
@@ -49,7 +50,7 @@
    (clean target-directory nil))
   ([target-directory {:keys [allow-outside-target?]}]
    (let [path (if (string? target-directory)
-                (Paths/get target-directory (make-array String 0))
+                (utils/make-path target-directory)
                 target-directory)]
      (sanity-check path allow-outside-target?)
      (delete-recursively path))))
