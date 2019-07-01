@@ -14,7 +14,10 @@
     (preVisitDirectory [_ dir attrs]
       FileVisitResult/CONTINUE)
     (visitFile [_ path attrs]
-      (.putNextEntry zip-out (ZipEntry. (str (utils/relativize-path root-path path))))
+      (.putNextEntry zip-out (-> (utils/relativize-path root-path path)
+                                 str
+                                 (.replace (System/getProperty "file.separator") "/")
+                                 (ZipEntry.)))
       (Files/copy path zip-out)
       (.closeEntry zip-out)
       FileVisitResult/CONTINUE)
