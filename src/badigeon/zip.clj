@@ -14,12 +14,14 @@
     (preVisitDirectory [_ dir attrs]
       FileVisitResult/CONTINUE)
     (visitFile [_ path attrs]
-      (.putNextEntry zip-out (-> (utils/relativize-path root-path path)
-                                 str
-                                 (.replace (System/getProperty "file.separator") "/")
-                                 (ZipEntry.)))
-      (Files/copy path zip-out)
-      (.closeEntry zip-out)
+      (let [zip-entry (-> (utils/relativize-path root-path path)
+                          str
+                          (.replace (System/getProperty "file.separator") "/")
+                          (ZipEntry.))]
+        (.setTime zip-entry (.lastModified (.toFile ^Path path)))
+        (.putNextEntry zip-out zip-entry)
+        (Files/copy path zip-out)
+        (.closeEntry zip-out))
       FileVisitResult/CONTINUE)
     (visitFileFailed [_ file exception]
       (cond (instance? FileSystemLoopException exception)
