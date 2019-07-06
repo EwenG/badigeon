@@ -119,9 +119,10 @@
 
 (defn- inclusion-path-visitor [^JarOutputStream jar-out pred root-path ^Path path attrs]
   (when-let [file-name (when pred (pred root-path path))]
-    (let [f (.toFile path)]
+    (let [file (.toFile path)]
       (let [bytes (.getBytes ^String (slurp (str path)))]
-        (.putNextEntry jar-out (JarEntry. ^String file-name))
+        (.putNextEntry jar-out (doto (JarEntry. ^String file-name)
+                                 (.setTime (.lastModified file))))
         (io/copy (ByteArrayInputStream. bytes) jar-out)))))
 
 (defn- copy-pom-properties [^JarOutputStream jar-out group-id artifact-id pom-properties]
