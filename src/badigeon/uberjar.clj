@@ -93,9 +93,11 @@
             :when (not (.isDirectory entry))]
       (let [entry-path (.getName entry)]
         (when-not (contains? *resource-conflict-paths* entry-path)
-          (let [f-path (.resolve to entry-path)]
+          (let [f-path (.resolve to entry-path)
+                file (.toFile f-path)]
             (Files/createDirectories (.getParent f-path) (make-array FileAttribute 0))
-            (io/copy (.getInputStream jar-file entry) (.toFile f-path))))))))
+            (io/copy (.getInputStream jar-file entry) file)
+            (.setLastModified file (.getTime entry))))))))
 
 (defn- make-directory-file-visitor [^Path root-path ^Path to]
   (reify FileVisitor
