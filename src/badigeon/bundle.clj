@@ -138,7 +138,9 @@
                (.isDirectory f)
                (copy-directory path out-path)))))))
 
-(defn make-out-path [lib version]
+(defn make-out-path
+  "Build a path using a library name and its version number."
+  [lib version]
   (let [[group-id artifact-id classifier] (maven/lib->names lib)]
     (utils/make-out-path artifact-id `{:mvn/version ~version
                                        ~@(when classifier [:classifier classifier]) ~@[]})))
@@ -223,7 +225,7 @@
   - out-path: The path of the output directory.
   - file-path: The path of jar file from which the native dependencies are extracted.
   - native-path: The path of the folder where native dependencies are extracted, relative to the output folder. Default to \"lib\".
-  - native-prefix: A map from libs (symbol) to a path prefix (string). Libs with a specified native-prefix are searched for native dependencies under the path of the native prefix only. The native-prefix is excluded from the output path of the native dependency.
+  - native-prefix: A path prefix (string). The file is searched for native dependencies under the path of the native prefix only. The native-prefix is excluded from the output path of the native dependency.
   - native-extensions: A collection of native extension regexp. Files which name match one of these regexps are considered a native dependency. Default to badigeon.bundle/native-extensions."
   ([out-path file-path]
    (extract-native-dependencies-from-file out-path file-path nil))
