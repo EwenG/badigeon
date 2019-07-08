@@ -10,10 +10,12 @@
             [badigeon.sign :as sign]
             [badigeon.deploy :as deploy]
             [badigeon.bundle :as bundle]
+            [badigeon.uberjar :as uberjar]
             [badigeon.jlink :as jlink]
             [badigeon.zip :as zip]
             [badigeon.war :as war]
-            [badigeon.exec :as exec]))
+            [badigeon.exec :as exec]
+            [badigeon.utils :as utils]))
 
 (def header "# API\n\n")
 (def template
@@ -31,10 +33,17 @@
           (.append sb c))))
     (str sb)))
 
-(def vars [#'clean/clean #'classpath/make-classpath #'javac/javac #'compile/compile #'jar/jar
+(def vars [#'clean/clean #'classpath/make-classpath #'javac/javac
+           #'compile/compile #'compile/extract-classes-from-dependencies
+           #'jar/jar #'jar/make-manifest
            #'pom/sync-pom #'install/install #'prompt/prompt #'prompt/prompt-password #'sign/sign
-           #'deploy/deploy #'bundle/bundle #'bundle/extract-native-dependencies #'bundle/bin-script
-           #'jlink/jlink #'zip/zip #'war/war-exploded #'war/war #'exec/exec])
+           #'deploy/deploy
+           #'bundle/bundle #'bundle/make-out-path
+           #'bundle/extract-native-dependencies #'bundle/extract-native-dependencies-from-file
+           #'bundle/bin-script
+           #'uberjar/bundle #'uberjar/find-resource-conflicts
+           #'jlink/jlink #'zip/zip #'war/war-exploded #'war/war #'exec/exec
+           #'utils/make-path])
 
 (defn var-sym [^clojure.lang.Var v]
   (symbol (str (.-ns v)) (str (.-sym v))))

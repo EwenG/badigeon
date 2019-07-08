@@ -35,6 +35,16 @@ AOT compile one or several Clojure namespace(s). Dependencies of the compiled na
   - compiler-options: A map with the same format than clojure.core/\*compiler-options\*.
   - classpath: The classpath used while AOT compiling. Defaults to a classpath string computed using the deps.edn file of the current project, without merging the system-level and user-level deps.edn maps.
 
+## `badigeon.compile/extract-classes-from-dependencies`
+
+Arglists: `([] [{:keys [out-path deps-map excluded-libs allow-unstable-deps?], :as opts}])`
+
+Extract classes from jar dependencies. By default, classes are extracted to the "target/classes" folder. This function can be used to circumvent the fact that badigeon.compile/compile does not compile dependencies that are already AOT, such as Clojure itself.
+  - out-path: The path of the output directory.
+  - deps-map: A map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for ".class" files. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
+  - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
+  - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
+
 ## `badigeon.jar/jar`
 
 Arglists: `([lib maven-coords] [lib maven-coords {:keys [out-path main manifest paths deps :mvn/repos exclusion-predicate inclusion-path allow-all-dependencies?], :as options}])`
@@ -51,6 +61,14 @@ Bundles project resources into a jar file. This function also generates maven de
   - exclusion-predicate: A predicate to exclude files that would otherwise been added to the jar. The predicate takes two parameters: the path fo the directory being visited (among the :paths of the project) and the path of the file being visited under this directory. The file being visited is added to the jar when the exclusion predicate returns a falsy value. It is excluded from the jar otherwise. Default to a predicate that excludes dotfiles and emacs backup files.
   - inclusion-path: A predicate to add files to the jar that would otherwise not have been added to it. Can be used to add any file of the project to the jar - not only those under the project :paths. The predicate takes two arguments: the path of the root directory of the project and the file being visited under this directory. The file being visited is added to the jar under the path returned by this function. It is not added to the jar when this function returns a falsy value. Default to a predicate that add the pom.xml, deps.edn, and any file at the root of the project directory starting with "license" or "readme" (case incensitive) under the "META-INF" folder of the jar.
   - allow-all-dependencies?: A boolean that can be set to true to allow any types of dependency, such as local or git dependencies. Default to false, in which case only maven dependencies are allowed - an exception is thrown when this is not the case. When set to true, the jar is produced even in the presence of non-maven dependencies, but only maven dependencies are added to the jar.
+
+## `badigeon.jar/make-manifest`
+
+Arglists: `([main] [main manifest-overrides])`
+
+Return the content of a MANIFEST.MF file as a string.
+  - main: A namespace to be added to the "Main" entry to the manifest. Default to nil.
+  - manifest-overrides: A map of additionel entries to the manifest. Values of the manifest map can be maps to represent manifest sections. By default, the manifest contains the "Created-by", "Built-By" and "Build-Jdk" entries.
 
 ## `badigeon.pom/sync-pom`
 
@@ -114,6 +132,12 @@ Creates a standalone bundle of the project resources and its dependencies. By de
   - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - libs-path: The path of the folder where dependencies are copied, relative to the output folder. Default to "lib".
 
+## `badigeon.bundle/make-out-path`
+
+Arglists: `([lib version])`
+
+Build a path using a library name and its version number.
+
 ## `badigeon.bundle/extract-native-dependencies`
 
 Arglists: `([out-path] [out-path {:keys [deps-map allow-unstable-deps? native-path native-prefixes native-extensions], :as opts}])`
@@ -124,6 +148,17 @@ Extract native dependencies (.so, .dylib, .dll, .a, .lib, .scx files) from jar d
   - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - native-path: The path of the folder where native dependencies are extracted, relative to the output folder. Default to "lib".
   - native-prefixes: A map from libs (symbol) to a path prefix (string). Libs with a specified native-prefix are searched for native dependencies under the path of the native prefix only. The native-prefix is excluded from the output path of the native dependency.
+  - native-extensions: A collection of native extension regexp. Files which name match one of these regexps are considered a native dependency. Default to badigeon.bundle/native-extensions.
+
+## `badigeon.bundle/extract-native-dependencies-from-file`
+
+Arglists: `([out-path file-path] [out-path file-path {:keys [native-path native-prefix native-extensions], :as opts}])`
+
+Extract native dependencies (.so, .dylib, .dll, .a, .lib, .scx files) from a jar file. By default native dependencies are extracted to a "lib" folder under the output directory.
+  - out-path: The path of the output directory.
+  - file-path: The path of jar file from which the native dependencies are extracted.
+  - native-path: The path of the folder where native dependencies are extracted, relative to the output folder. Default to "lib".
+  - native-prefix: A path prefix (string). The file is searched for native dependencies under the path of the native prefix only. The native-prefix is excluded from the output path of the native dependency.
   - native-extensions: A collection of native extension regexp. Files which name match one of these regexps are considered a native dependency. Default to badigeon.bundle/native-extensions.
 
 ## `badigeon.bundle/bin-script`
@@ -140,6 +175,24 @@ Write a start script for the bundle under "out-path", using the "main" parameter
   - classpath: The classpath argument used when executing the command. Default a classpath containing the root folder and the lib directory.
   - jvm-opts: A vector of jvm arguments used when executing the command. Default to the empty vector.
   - args: A vector of arguments provided to the program. Default to the empty vector.
+
+## `badigeon.uberjar/bundle`
+
+Arglists: `([out-path] [out-path {:keys [deps-map excluded-libs allow-unstable-deps? warn-on-resource-conflicts?]}])`
+
+Creates a directory that contains all the resources from all the dependencies resolved from "deps-map". Resource conflicts (multiple resources with the same path) are not copied to the output directory. Use the "badigeon.uberjar/find-resource-conflicts" function to list resource conflicts. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
+  - out-path: The path of the output directory.
+  - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repositories.
+  - excluded-libs: A set of lib symbols to be excluded from the produced directory. Only the lib is excluded and not its dependencies.
+  - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
+  - warn-on-resource-conflicts?. A boolean. When set to true and resource conflicts are found, then a warning is printed to \*err\*.
+
+## `badigeon.uberjar/find-resource-conflicts`
+
+Arglists: `([] [{:keys [deps-map]}])`
+
+Return the paths of all the resource conflicts (multiple resources with the same path) found on the classpath.
+  - deps-map: A map with the same format than a deps.edn map. The dependencies resolved from this map are searched for conflicts. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
 
 ## `badigeon.jlink/jlink`
 
@@ -191,4 +244,10 @@ Synchronously executes the specified command in a separate process. Prints the p
   - command: The command to be executed.
   - proc-args: A collection of command arguments. Default to no argument.
   - error-msg: The error message of the exception thrown upon error. Default to "Process execution error".
+
+## `badigeon.utils/make-path`
+
+Arglists: `([path & paths])`
+
+Returns a java.nio.file.Path constructed from the provided String(s).
 
