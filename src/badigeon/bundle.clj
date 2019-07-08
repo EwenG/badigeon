@@ -350,19 +350,27 @@
 
   (let [out-path (make-out-path 'badigeon/badigeon utils/version)
         deps-map (assoc (deps-reader/slurp-deps "deps.edn") :paths ["target/classes"])]
-    (badigeon.clean/clean "target/badigeon-0.0.1-SNAPSHOT")
+    (badigeon.clean/clean out-path)
     (badigeon.clean/clean "target/classes")
-    (badigeon.compile/compile 'badigeon.main
+    #_(badigeon.compile/compile 'badigeon.main
                               {:compiler-options {:elide-meta [:doc :file :line :added]
                                                   :direct-linking true}})
-    (bundle out-path {:deps-map deps-map
-                      :allow-unstable-deps? true})
-    (extract-native-dependencies out-path {:deps-map deps-map
-                                           :allow-unstable-deps? true})
-    (badigeon.jlink/jlink out-path)
-    (bin-script out-path 'badigeon.main {:jvm-opts ["-Xmx1024m"]})
-    (bin-script out-path 'badigeon.main {:os-type windows-like})
-    (badigeon.zip/zip out-path (str out-path ".zip")))
+    #_(bundle out-path {:deps-map deps-map
+                        :allow-unstable-deps? true})
+    ;; overtone/scsynth {:mvn/version "3.10.2"}
+    #_(extract-native-dependencies out-path {:deps-map deps-map
+                                             :allow-unstable-deps? true
+                                             :native-prefixes {'overtone/scsynth "native"}})
+    (extract-native-dependencies-from-file
+     out-path
+     (str (System/getProperty "user.home")
+          "/.m2/repository/overtone/scsynth/3.10.2/scsynth-3.10.2.jar")
+     {:native-path "lib"
+      :native-prefix "/native"})
+    #_(badigeon.jlink/jlink out-path)
+    #_(bin-script out-path 'badigeon.main {:jvm-opts ["-Xmx1024m"]})
+    #_(bin-script out-path 'badigeon.main {:os-type windows-like})
+    #_(badigeon.zip/zip out-path (str out-path ".zip")))
   )
 
 ;; Excluded-libs excludes a lib but not its dependencies

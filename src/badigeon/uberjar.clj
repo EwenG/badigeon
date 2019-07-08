@@ -139,7 +139,7 @@
   - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repositories.
   - excluded-libs: A set of lib symbols to be excluded from the produced directory. Only the lib is excluded and not its dependencies.
   - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
-  - warn-on-resource-conflicts?. A boolean. When set to true and resource conflicts are found, then a warning is emitted."
+  - warn-on-resource-conflicts?. A boolean. When set to true and resource conflicts are found, then a warning is printed to *err*."
   ([out-path]
    (bundle out-path nil))
   ([out-path {:keys [deps-map
@@ -171,8 +171,13 @@
      out-path)))
 
 (comment
-  (find-resource-conflicts)
+  (find-resource-conflicts {:deps-map (deps-reader/slurp-deps "deps.edn")})
   
   (let [out-path (utils/make-out-path 'badigeon {:mvn/version utils/version :classifier "rrr"})]
-    (bundle out-path {:warn-on-resource-conflicts? true}))
+    (badigeon.clean/clean out-path)
+    (bundle out-path
+            {:deps-map (deps-reader/slurp-deps "deps.edn")
+             :excluded-libs #{'org.clojure/clojure}
+             :allow-unstable-deps true
+             :warn-on-resource-conflicts? false}))
   )

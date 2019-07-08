@@ -106,9 +106,9 @@
                 (io/copy (.getInputStream jar-file entry) (.toFile f-path))))))))))
 
 (defn extract-classes-from-dependencies
-  "Extract classes from jar dependencies. By default, classes are extracted the \"target/classes\" folder. This function can be used to circumvent the fact that badigeon.compile/compile does not compile dependencies that are already AOT, such as Clojure itself.
+  "Extract classes from jar dependencies. By default, classes are extracted to the \"target/classes\" folder. This function can be used to circumvent the fact that badigeon.compile/compile does not compile dependencies that are already AOT, such as Clojure itself.
   - out-path: The path of the output directory.
-  - deps-map: A map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for native dependencies. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
+  - deps-map: A map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for \".class\" files. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
   - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false."
   ([]
@@ -138,9 +138,11 @@
   (compile '[badigeon.main] {:compile-path "target/classes"
                              :compiler-options {:elide-meta [:doc :file :line :added]}})
 
-  (extract-classes-from-dependencies
-   {:deps-map (assoc (deps-reader/slurp-deps "deps.edn") :deps '{org.clojure/clojure {:mvn/version "1.9.0"}})
-    :excluded-libs #{'org.clojure/clojure}})
+  (do
+    (badigeon.clean/clean "target/classes")
+    (extract-classes-from-dependencies
+     {:deps-map (assoc (deps-reader/slurp-deps "deps.edn") :deps '{org.clojure/clojure {:mvn/version "1.9.0"}})
+      :excluded-libs #{'org.clojure/clojure}}))
   
   )
 
