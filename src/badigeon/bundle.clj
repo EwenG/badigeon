@@ -7,8 +7,7 @@
             [clojure.tools.deps.alpha.util.maven :as maven])
   (:import [java.nio.file Path Paths Files
             FileVisitor FileVisitOption FileVisitResult
-            FileSystemLoopException NoSuchFileException FileAlreadyExistsException
-            StandardCopyOption LinkOption]
+            FileSystemLoopException NoSuchFileException FileAlreadyExistsException LinkOption]
            [java.nio.file.attribute FileAttribute]
            [java.util.jar JarFile JarEntry]
            [java.util EnumSet]))
@@ -27,11 +26,7 @@
 (defn pre-visit-directory [^Path root-path ^Path to dir attrs]
   (let [new-dir (.resolve to (.relativize root-path dir))]
     (try
-      (Files/copy
-       ^Path dir new-dir
-       ^"[Ljava.nio.file.StandardCopyOption;" (into-array
-                                               StandardCopyOption
-                                               [StandardCopyOption/COPY_ATTRIBUTES]))
+      (Files/copy ^Path dir new-dir utils/copy-options-no-replace)
       (catch FileAlreadyExistsException e
         ;; ignore
         nil))
@@ -59,12 +54,7 @@
                                             :relative-path (str relative-path)})))
         (when (some? *copied-paths*)
           (set! *copied-paths* (conj *copied-paths* relative-path)))
-        (Files/copy
-         ^Path path new-file
-         ^"[Ljava.nio.file.StandardCopyOption;" (into-array
-                                                 StandardCopyOption
-                                                 [StandardCopyOption/COPY_ATTRIBUTES
-                                                  StandardCopyOption/REPLACE_EXISTING]))
+        (Files/copy ^Path path new-file utils/copy-options)
         FileVisitResult/CONTINUE))
     (visitFileFailed [_ file exception]
       (visit-file-failed file exception))))
@@ -133,11 +123,7 @@
       (do
         (when (some? *out-path*)
           (set! *copied-paths* (conj *copied-paths* relative-path)))
-        (Files/copy
-         from to
-         ^"[Ljava.nio.file.StandardCopyOption;" (into-array StandardCopyOption
-                                                            [StandardCopyOption/COPY_ATTRIBUTES
-                                                             StandardCopyOption/REPLACE_EXISTING]))))))
+        (Files/copy from to utils/copy-options)))))
 
 (defn- copy-dependency
   ([coords out-path]

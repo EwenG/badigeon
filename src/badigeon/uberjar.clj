@@ -6,8 +6,7 @@
             [clojure.java.io :as io])
   (:import [java.nio.file Path Files
             FileVisitor FileVisitOption FileVisitResult
-            FileSystemLoopException NoSuchFileException
-            StandardCopyOption]
+            FileSystemLoopException NoSuchFileException]
            [java.nio.file.attribute FileAttribute]
            [java.util.jar Manifest JarFile JarEntry]
            [java.util EnumSet]))
@@ -85,11 +84,7 @@
         ^Path from (if (string? from)
                      (utils/make-path from)
                      from)]
-    (Files/copy
-     from to
-     ^"[Ljava.nio.file.StandardCopyOption;" (into-array StandardCopyOption
-                                                        [StandardCopyOption/COPY_ATTRIBUTES
-                                                         StandardCopyOption/REPLACE_EXISTING]))))
+    (Files/copy from to utils/copy-options)))
 
 (defn- copy-jar [path ^Path to]
   (let [jar-file (JarFile. (str path))

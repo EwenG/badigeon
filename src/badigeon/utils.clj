@@ -1,10 +1,20 @@
 (ns badigeon.utils
   (:require [clojure.tools.deps.alpha.util.maven :as maven])
-  (:import [java.nio.file Paths Path]))
+  (:import [java.nio.file Paths Path StandardCopyOption]))
 
 (def ^:const version "0.0.7")
 
-(defn ^Path make-path [path & paths]
+(def ^"[Ljava.nio.file.StandardCopyOption;" copy-options
+  (into-array StandardCopyOption
+              [StandardCopyOption/COPY_ATTRIBUTES
+               StandardCopyOption/REPLACE_EXISTING]))
+
+(def ^"[Ljava.nio.file.StandardCopyOption;" copy-options-no-replace
+  (into-array StandardCopyOption [StandardCopyOption/COPY_ATTRIBUTES]))
+
+(defn ^Path make-path
+  "Returns a java.nio.file.Path constructed from the provided String(s)."
+  [path & paths]
   (Paths/get (str path) (into-array String (map str paths))))
 
 (defn relativize-path [^Path root-path ^Path path]
