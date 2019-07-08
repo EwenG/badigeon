@@ -95,9 +95,11 @@
                        ;; an empty path
                        (.startsWith entry-path native-prefix))
               (let [entry-path (.relativize native-prefix entry-path)
-                    f-path (.resolve native-path entry-path)]
+                    f-path (.resolve native-path entry-path)
+                    file (.toFile f-path)]
                 (Files/createDirectories (.getParent f-path) (make-array FileAttribute 0))
-                (io/copy (.getInputStream jar-file entry) (.toFile f-path))))))))))
+                (io/copy (.getInputStream jar-file entry) file)
+                (.setLastModified file (.getTime entry))))))))))
 
 (defn copy-directory [from to-directory]
   (let [to-directory (if (string? to-directory)
