@@ -9,6 +9,7 @@ Badigeon is a build library based on tools.deps. Badigeon can be used to:
 - Install jar files to remote maven repository
 - Sign jar files
 - Package a project into a standalone bundle with a start script
+- Package a project as an uberjar file
 - Produce a custom JRE runtime using jlink
 - Package a project as a war file
 - Execute shell commands in a separate process
