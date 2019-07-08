@@ -9,6 +9,7 @@
             [badigeon.sign :as sign]
             [badigeon.deploy :as deploy]
             [badigeon.bundle :as bundle]
+            [badigeon.uberjar :as uberjar]
             [badigeon.zip :as zip]
             ;; Requires a JDK 9+
             [badigeon.jlink :as jlink]
@@ -26,10 +27,10 @@
 
   ;; Given a dependencies map and a vector of alias keywords, computes a classpath string
   (classpath/make-classpath {:deps-map {:paths ["src"]
-                                       :deps {:org.clojure/clojure {:mvn/version "1.9.0"}
-                                              :org.clojure/tools.deps.alpha {:mvn/version "0.6.480"}}
-                                       :aliases {:doc {:extra-paths ["src-doc"]}}}
-                            :alias-keywords [:doc]})
+                                        :deps {:org.clojure/clojure {:mvn/version "1.9.0"}
+                                               :org.clojure/tools.deps.alpha {:mvn/version "0.6.480"}}
+                                        :aliases {:doc {:extra-paths ["src-doc"]}}}
+                             :alias-keywords [:doc]})
 
   ;; Compile java sources under the src-java directory
   (javac/javac "src-java" {;; Emit class files to the target/classes directory
@@ -49,6 +50,17 @@
                     ;; The classpath used during AOT compilation is built using the deps.edn file
                     ;; and the :aot alias
                     :classpath (classpath/make-classpath {:aliases [:aot]})})
+
+  ;; Extract classes from jar dependencies
+  (compile/extract-classes-from-dependencies
+   {;; Copy class files to the target/classes directory
+    :out-path "target/classes"
+    ;; A map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for \".class\" files
+    :deps-map (deps-reader/slurp-deps "deps.edn")
+    ;; The dependencies to be excluded from the search for class files
+    :excluded-libs #{'org.clojure/clojure}
+    ;; Set to true to allow local dependencies and snpashot versions of maven dependencies.
+    :allow-unstable-deps? true})
 
   ;; Package the project into a jar file
   (jar/jar 'badigeon/badigeon {:mvn/version "0.0.1-SNAPSHOT"}
@@ -118,7 +130,7 @@
                              :allow-unstable-deps? true
                              ;; The path of the folder where dependencies are copied, relative to the output folder.
                              :libs-path "lib"})
-    ;; Extract native dependencies (.so, .dylib, .dll, .a, .lib files) from jar dependencies.
+    ;; Extract native dependencies (.so, .dylib, .dll, .a, .lib, .scx files) from jar dependencies.
     (bundle/extract-native-dependencies out-path
                                         {;; A map with the same format than deps.edn. :deps-map is used to resolve the project dependencies.
                                          :deps-map (deps-reader/slurp-deps "deps.edn")
@@ -127,9 +139,22 @@
                                          ;; The directory where native dependencies are copied.
                                          :native-path "lib"
                                          ;; The paths where native dependencies should be searched. The native-prefix is excluded from the output path of the native dependency.
-                                         :native-prefixes {'org.lwjgl.lwjgl/lwjgl-platform ""}
+                                         :native-prefixes {'org.lwjgl.lwjgl/lwjgl-platform "/"}
                                          ;; A collection of native extension regexp. Files which name match one of these regexps are considered a native dependency. Default to badigeon.bundle/native-extensions.
                                          :native-extensions #{#"\.so$"}})
+
+    ;; Extract native dependencies (.so, .dylib, .dll, .a, .lib, .scx files) from a jar file
+    (bundle/extract-native-dependencies-from-file
+     out-path
+     ;; The path of the jar file the native dependencies are extracted from
+     (str (System/getProperty "user.home")
+          "/.m2/repository/overtone/scsynth/3.10.2/scsynth-3.10.2.jar")
+     {;; The directory where native dependencies are copied.
+      :native-path "lib"
+      ;; The path where native dependencies should be searched. The native-prefix is excluded from the output path of the native dependency.
+      :native-prefix "/"
+      ;; A collection of native extension regexp. Files which name match one of these regexps are considered a native dependency. Default to badigeon.bundle/native-extensions.
+      :native-extensions #{#"\.so$"}})
 
     ;; Requires a JDK9+
     ;; Embeds a custom JRE runtime into the bundle.
@@ -161,7 +186,7 @@
                         :args ["some-argument"]})
 
     ;; Zip the bundle
-    (badigeon.zip/zip out-path (str out-path ".zip"))
+    (zip/zip out-path (str out-path ".zip"))
 
     ;; Delete the target directory
     (clean/clean "target")
@@ -201,7 +226,27 @@
     ;; Execute the "lessc" command in a separate process.
     (exec/exec "lessc" {:proc-args ["test.less" "test.css"]
                         ;; The error message of the exception thrown upon error.
-                        :error-msg "Process execution error"})))
+                        :error-msg "Process execution error"}))
+
+  ;; Make an uberjar of the application
+  (let [;; Automatically compute the bundle directory name based on the application name and version.
+        out-path (badigeon.bundle/make-out-path 'badigeon/badigeon "0.0.1-SNAPSHOT")]
+    (uberjar/bundle out-path
+                    {;; A map with the same format than deps.edn. :deps-map is used to resolve the project resources.
+                     :deps-map (deps-reader/slurp-deps "deps.edn")
+                     ;; The dependencies to be excluded from the produced bundle.
+                     :excluded-libs #{'org.clojure/clojure}
+                     ;; Set to true to allow local dependencies and snpashot versions of maven dependencies.
+                     :allow-unstable-deps? true
+                     ;; When set to true and resource conflicts are found, then a warning is printed to *err*
+                     :warn-on-resource-conflicts? true})
+    ;; Output a MANIFEST.MF file defining 'badigeon.main as the main namespace
+    (spit (str (badigeon.utils/make-path out-path "META-INF/MANIFEST.MF"))
+          (jar/make-manifest 'badigeon.main))
+    ;; Return the paths of all the resource conflicts (multiple resources with the same path) found on the classpath.
+    (uberjar/find-resource-conflicts {:deps-map (deps-reader/slurp-deps "deps.edn")})
+    ;; Zip the bundle into an uberjar
+    (zip/zip out-path (str out-path ".jar"))))
 
 (comment
   (-main)
