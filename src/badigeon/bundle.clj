@@ -73,9 +73,10 @@
 
 (defn- do-extract-native-dependencies
   [native-prefix path ^Path out-path ^Path native-path extensions]
-  (let [^Path native-prefix (if (instance? Path native-prefix)
-                              native-prefix
-                              (utils/make-path native-prefix))
+  (let [native-prefix (if (instance? Path native-prefix)
+                        native-prefix
+                        (utils/make-path native-prefix))
+        native-prefix (utils/make-path "/" native-prefix)
         native-path (.resolve out-path native-path)
         ^Path path (if (string? path)
                      (utils/make-path path)
@@ -87,8 +88,11 @@
             entries (enumeration-seq (.entries jar-file))]
         (doseq [^JarEntry entry entries]
           (let [entry-path-str (.getName entry)
-                entry-path (utils/make-path entry-path-str)]
+                entry-path (utils/make-path "/" entry-path-str)]
             (when (and (some #(re-find % entry-path-str) extensions)
+                       ;; Compare absolute path such that the user can specify an absolute path or a
+                       ;; relative path and in order for .startsWith to return true when called with
+                       ;; an empty path
                        (.startsWith entry-path native-prefix))
               (let [entry-path (.relativize native-prefix entry-path)
                     f-path (.resolve native-path entry-path)]
