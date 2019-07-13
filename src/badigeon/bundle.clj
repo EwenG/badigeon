@@ -260,6 +260,34 @@
         native-prefix file-path out-path native-path native-extensions)
        out-path))))
 
+(defn- make-directory-walker [directory visitor-fn]
+  (reify FileVisitor
+    (postVisitDirectory [_ dir exception]
+      FileVisitResult/CONTINUE)
+    (preVisitDirectory [_ dir attrs]
+      FileVisitResult/CONTINUE)
+    (visitFile [_ path attrs]
+      (visitor-fn directory path)
+      FileVisitResult/CONTINUE)
+    (visitFileFailed [_ file exception]
+      (cond (instance? FileSystemLoopException exception)
+            FileVisitResult/SKIP_SUBTREE
+            (instance? NoSuchFileException exception)
+            FileVisitResult/SKIP_SUBTREE
+            :else (throw exception)))))
+
+(defn walk-directory
+  "Recursively visit all the files of a directory. For each visited file, the function f is called with two parameters: The path of the directory being recursively visited and the path of the file being visited, relative to the directory."
+  [directory f]
+  (let [directory (if (string? directory)
+                    (utils/make-path directory)
+                    directory)]
+    (Files/walkFileTree directory
+                        (EnumSet/of FileVisitOption/FOLLOW_LINKS)
+                        Integer/MAX_VALUE
+                        (make-directory-walker directory f))))
+
+
 (def ^:const windows-like :windows-like)
 (def ^:const posix-like :posix-like)
 
@@ -377,6 +405,10 @@
     #_(bin-script out-path 'badigeon.main {:jvm-opts ["-Xmx1024m"]})
     #_(bin-script out-path 'badigeon.main {:os-type windows-like})
     #_(badigeon.zip/zip out-path (str out-path ".zip")))
+  )
+
+(comment
+  (walk-directory (make-out-path 'badigeon/badigeon utils/version) (fn [d p] (prn p)))
   )
 
 ;; Excluded-libs excludes a lib but not its dependencies
