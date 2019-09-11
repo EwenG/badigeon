@@ -240,6 +240,11 @@
                      :allow-unstable-deps? true
                      ;; When set to true and resource conflicts are found, then a warning is printed to *err*
                      :warn-on-resource-conflicts? true})
+    ;; Recursively walk the bundle files and delete all the Clojure source files
+    (uberjar/walk-directory
+     out-path
+     (fn [dir f] (when (.endsWith (str f) ".clj")
+                   (java.nio.file.Files/delete f))))
     ;; Output a MANIFEST.MF file defining 'badigeon.main as the main namespace
     (spit (str (badigeon.utils/make-path out-path "META-INF/MANIFEST.MF"))
           (jar/make-manifest 'badigeon.main))
