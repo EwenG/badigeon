@@ -135,9 +135,10 @@
               (.isDirectory f)
               (copy-directory path out-path))))))
 
-(def make-out-path
+(defn make-out-path
   "Build a path using a library name and its version number."
-  bundle/make-out-path)
+  [lib version]
+  (bundle/make-out-path lib version))
 
 (defn bundle
   "Creates a directory that contains all the resources from all the dependencies resolved from \"deps-map\". Resource conflicts (multiple resources with the same path) are not copied to the output directory. Use the \"badigeon.uberjar/find-resource-conflicts\" function to list resource conflicts. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
@@ -176,9 +177,10 @@
          (copy-dependency {:paths (:paths deps-map)} out-path)))
      out-path)))
 
-(def walk-directory
+(defn walk-directory
   "Recursively visit all the files of a directory. For each visited file, the function f is called with two parameters: The path of the directory being recursively visited and the path of the file being visited, relative to the directory."
-  bundle/walk-directory)
+  [directory f]
+  (bundle/walk-directory directory f))
 
 (comment
   (find-resource-conflicts {:deps-map (deps-reader/slurp-deps "deps.edn")})
