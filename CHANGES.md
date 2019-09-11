@@ -1,3 +1,10 @@
+# 0.0.9
+
+- Add the badigeon.uberjar/walk-directory function
+- Add the badigeon.uberjar/make-out-path function
+- Add the badigeon.bundle/walk-directory function
+- Update to tools.deps.alpha version 0.7.541
+
 # 0.0.8
 
 - Copy the last modification time of files included in the zip archive created with badigeon.zip/zip. This fixes potential issues when .classes files were added to the zip.
