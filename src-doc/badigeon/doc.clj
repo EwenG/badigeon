@@ -38,10 +38,12 @@
            #'jar/jar #'jar/make-manifest
            #'pom/sync-pom #'install/install #'prompt/prompt #'prompt/prompt-password #'sign/sign
            #'deploy/deploy
-           #'bundle/bundle #'bundle/make-out-path
+           #'bundle/make-out-path #'bundle/bundle
            #'bundle/extract-native-dependencies #'bundle/extract-native-dependencies-from-file
+           #'bundle/walk-directory
            #'bundle/bin-script
-           #'uberjar/bundle #'uberjar/find-resource-conflicts
+           #'uberjar/make-out-path #'uberjar/bundle
+           #'uberjar/find-resource-conflicts #'uberjar/walk-directory
            #'jlink/jlink #'zip/zip #'war/war-exploded #'war/war #'exec/exec
            #'utils/make-path])
 

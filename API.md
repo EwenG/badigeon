@@ -58,7 +58,7 @@ Bundles project resources into a jar file. This function also generates maven de
   - paths: A vector of the paths containing the resources to be bundled into the jar. Default to the paths of the deps.edn file.
   - deps: The dependencies of the project. deps have the same format than the :deps entry of a tools.deps map. Dependencies are copied to the pom.xml file produced while generating the jar file. Default to the deps.edn dependencies of the project (excluding the system-level and user-level deps.edn dependencies).
   - mvn/repos: Repositories to be copied to the pom.xml file produced while generating the jar. Must have same format than the :mvn/repos entry of deps.edn. Default to nil.
-  - exclusion-predicate: A predicate to exclude files that would otherwise been added to the jar. The predicate takes two parameters: the path fo the directory being visited (among the :paths of the project) and the path of the file being visited under this directory. The file being visited is added to the jar when the exclusion predicate returns a falsy value. It is excluded from the jar otherwise. Default to a predicate that excludes dotfiles and emacs backup files.
+  - exclusion-predicate: A predicate to exclude files that would otherwise been added to the jar. The predicate takes two parameters: the path of the directory being visited (among the :paths of the project) and the path of the file being visited under this directory. The file being visited is added to the jar when the exclusion predicate returns a falsy value. It is excluded from the jar otherwise. Default to a predicate that excludes dotfiles and emacs backup files.
   - inclusion-path: A predicate to add files to the jar that would otherwise not have been added to it. Can be used to add any file of the project to the jar - not only those under the project :paths. The predicate takes two arguments: the path of the root directory of the project and the file being visited under this directory. The file being visited is added to the jar under the path returned by this function. It is not added to the jar when this function returns a falsy value. Default to a predicate that add the pom.xml, deps.edn, and any file at the root of the project directory starting with "license" or "readme" (case incensitive) under the "META-INF" folder of the jar.
   - allow-all-dependencies?: A boolean that can be set to true to allow any types of dependency, such as local or git dependencies. Default to false, in which case only maven dependencies are allowed - an exception is thrown when this is not the case. When set to true, the jar is produced even in the presence of non-maven dependencies, but only maven dependencies are added to the jar.
 
@@ -121,6 +121,12 @@ Deploys a collection of artifacts to a remote repository. When deploying non-sna
   - credentials: When authenticating to a repository, the credentials are searched in the maven settings.xml file, using the repository :id, unless the "credentials" parameter is used. credentials must be a map with the following optional keys: :username, :password, :private-key, :passphrase
   - allow-unsigned?: When set to true, allow deploying non-snapshot versions of unsigned artifacts. Default to false.
 
+## `badigeon.bundle/make-out-path`
+
+Arglists: `([lib version])`
+
+Build a path using a library name and its version number.
+
 ## `badigeon.bundle/bundle`
 
 Arglists: `([out-path] [out-path {:keys [deps-map excluded-libs allow-unstable-deps? libs-path]}])`
@@ -131,12 +137,6 @@ Creates a standalone bundle of the project resources and its dependencies. By de
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
   - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - libs-path: The path of the folder where dependencies are copied, relative to the output folder. Default to "lib".
-
-## `badigeon.bundle/make-out-path`
-
-Arglists: `([lib version])`
-
-Build a path using a library name and its version number.
 
 ## `badigeon.bundle/extract-native-dependencies`
 
@@ -161,6 +161,12 @@ Extract native dependencies (.so, .dylib, .dll, .a, .lib, .scx files) from a jar
   - native-prefix: A path prefix (string). The file is searched for native dependencies under the path of the native prefix only. The native-prefix is excluded from the output path of the native dependency.
   - native-extensions: A collection of native extension regexp. Files which name match one of these regexps are considered a native dependency. Default to badigeon.bundle/native-extensions.
 
+## `badigeon.bundle/walk-directory`
+
+Arglists: `([directory f])`
+
+Recursively visit all the files of a directory. For each visited file, the function f is called with two parameters: The path of the directory being recursively visited and the path of the file being visited, relative to the directory.
+
 ## `badigeon.bundle/bin-script`
 
 Arglists: `([out-path main] [out-path main {:keys [os-type script-path script-header command classpath jvm-opts args]}])`
@@ -175,6 +181,12 @@ Write a start script for the bundle under "out-path", using the "main" parameter
   - classpath: The classpath argument used when executing the command. Default a classpath containing the root folder and the lib directory.
   - jvm-opts: A vector of jvm arguments used when executing the command. Default to the empty vector.
   - args: A vector of arguments provided to the program. Default to the empty vector.
+
+## `badigeon.uberjar/make-out-path`
+
+Arglists: `([lib version])`
+
+Build a path using a library name and its version number.
 
 ## `badigeon.uberjar/bundle`
 
@@ -193,6 +205,12 @@ Arglists: `([] [{:keys [deps-map]}])`
 
 Return the paths of all the resource conflicts (multiple resources with the same path) found on the classpath.
   - deps-map: A map with the same format than a deps.edn map. The dependencies resolved from this map are searched for conflicts. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
+
+## `badigeon.uberjar/walk-directory`
+
+Arglists: `([directory f])`
+
+Recursively visit all the files of a directory. For each visited file, the function f is called with two parameters: The path of the directory being recursively visited and the path of the file being visited, relative to the directory.
 
 ## `badigeon.jlink/jlink`
 
