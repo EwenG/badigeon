@@ -57,6 +57,7 @@
   - servlet-namespace: A symbol naming a namespace. This namespace must contain a :gen-class directive implementing an HttpServlet.
   - compiler-options: A map with the same format than clojure.core/*compiler-options*. The compiler-options are used when compiling the servlet-namespace and, when provided, the listener-namespace.
   - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
+  - aliases: Alias keywords used while resolving dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
   - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - manifest: A map of additionel entries to the war manifest. Values of the manifest map can be maps to represent manifest sections. By default, the war manifest contains the \"Created-by\", \"Built-By\" and \"Build-Jdk\" entries.
@@ -72,11 +73,12 @@
     {:keys [compiler-options
 
             deps-map
+            aliases
             excluded-libs
             allow-unstable-deps?
 
             manifest
-            
+
             servlet-version
             servlet-name
             servlet-class
@@ -91,7 +93,8 @@
      :as opts}]
    (let [deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
-         resolved-deps (deps/resolve-deps deps-map nil)
+         args-map (deps/combine-aliases deps-map aliases)
+         resolved-deps (deps/resolve-deps deps-map args-map)
          ^Path out-path (if (string? out-path)
                           (utils/make-path out-path)
                           out-path)

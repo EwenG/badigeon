@@ -155,18 +155,21 @@
   "Creates a standalone bundle of the project resources and its dependencies. By default jar dependencies are copied in a \"lib\" folder, under the ouput directory. Other dependencies (local and git) are copied by copying their :paths content to the root of the output directory. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
   - out-path: The path of the output directory.
   - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repositories.
+  - aliases: Alias keywords used while resolving dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
   - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - libs-path: The path of the folder where dependencies are copied, relative to the output folder. Default to \"lib\"."
   ([out-path]
    (bundle out-path nil))
   ([out-path {:keys [deps-map
+                     aliases
                      excluded-libs
                      allow-unstable-deps?
                      libs-path]}]
    (let [deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
-         resolved-deps (deps/resolve-deps deps-map nil)
+         args-map (deps/combine-aliases deps-map aliases)
+         resolved-deps (deps/resolve-deps deps-map args-map)
          ^Path out-path (if (string? out-path)
                           (utils/make-path out-path)
                           out-path)
@@ -190,6 +193,7 @@
   "Extract native dependencies (.so, .dylib, .dll, .a, .lib, .scx files) from jar dependencies. By default native dependencies are extracted to a \"lib\" folder under the output directory.
   - out-path: The path of the output directory.
   - deps-map: A map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for native dependencies. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
+  - aliases: Alias keywords used while resolving dependencies.
   - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - native-path: The path of the folder where native dependencies are extracted, relative to the output folder. Default to \"lib\".
   - native-prefixes: A map from libs (symbol) to a path prefix (string). Libs with a specified native-prefix are searched for native dependencies under the path of the native prefix only. The native-prefix is excluded from the output path of the native dependency.
@@ -197,13 +201,15 @@
   ([out-path]
    (extract-native-dependencies out-path nil))
   ([out-path {:keys [deps-map
+                     aliases
                      allow-unstable-deps?
                      native-path
                      native-prefixes
                      native-extensions] :as opts}]
    (when out-path
      (let [deps-map (update deps-map :mvn/repos utils/with-standard-repos)
-           resolved-deps (deps/resolve-deps deps-map nil)
+           args-map (deps/combine-aliases deps-map aliases)
+           resolved-deps (deps/resolve-deps deps-map args-map)
            ^Path out-path (if (string? out-path)
                             (utils/make-path out-path)
                             out-path)

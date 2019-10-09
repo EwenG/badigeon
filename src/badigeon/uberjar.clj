@@ -66,10 +66,11 @@
   - deps-map: A map with the same format than a deps.edn map. The dependencies resolved from this map are searched for conflicts. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository."
   ([]
    (find-resource-conflicts nil))
-  ([{:keys [deps-map]}]
+  ([{:keys [deps-map aliases]}]
    (let [deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
-         resolved-deps (deps/resolve-deps deps-map nil)]
+         args-map (deps/combine-aliases deps-map aliases)
+         resolved-deps (deps/resolve-deps deps-map args-map)]
      (binding [*resource-paths* #{}
                *resource-conflict-paths* #{}]
        (doseq [[lib {:keys [paths] :as coords}] resolved-deps]
@@ -144,19 +145,22 @@
   "Creates a directory that contains all the resources from all the dependencies resolved from \"deps-map\". Resource conflicts (multiple resources with the same path) are not copied to the output directory. Use the \"badigeon.uberjar/find-resource-conflicts\" function to list resource conflicts. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
   - out-path: The path of the output directory.
   - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repositories.
+  - aliases: Alias keywords used while resolving dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced directory. Only the lib is excluded and not its dependencies.
   - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - warn-on-resource-conflicts?. A boolean. When set to true and resource conflicts are found, then a warning is printed to *err*."
   ([out-path]
    (bundle out-path nil))
   ([out-path {:keys [deps-map
+                     aliases
                      excluded-libs
                      allow-unstable-deps?
                      warn-on-resource-conflicts?]
               :or {warn-on-resource-conflicts? true}}]
    (let [deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
-         resolved-deps (deps/resolve-deps deps-map nil)
+         args-map (deps/combine-aliases deps-map aliases)
+         resolved-deps (deps/resolve-deps deps-map args-map)
          ^Path out-path (if (string? out-path)
                           (utils/make-path out-path)
                           out-path)]
@@ -165,7 +169,8 @@
         #(or (utils/snapshot-dep? %) (utils/local-dep? %))
         resolved-deps))
      (Files/createDirectories out-path (make-array FileAttribute 0))
-     (let [resource-conflict-paths (find-resource-conflicts deps-map)]
+     (let [resource-conflict-paths (find-resource-conflicts {:deps-map deps-map
+                                                             :aliases aliases})]
        (when (and warn-on-resource-conflicts? (seq resource-conflict-paths))
          (binding [*out* *err*]
            (prn (str "Warning: Resource conflicts found: "
