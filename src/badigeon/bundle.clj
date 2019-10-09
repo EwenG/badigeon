@@ -169,6 +169,7 @@
    (let [deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
          args-map (deps/combine-aliases deps-map aliases)
+         aliases (set aliases)
          resolved-deps (deps/resolve-deps deps-map args-map)
          ^Path out-path (if (string? out-path)
                           (utils/make-path out-path)
@@ -183,10 +184,15 @@
      (Files/createDirectories (.resolve out-path libs-path) (make-array FileAttribute 0))
      (binding [*out-path* out-path
                *copied-paths* #{}]
-       (doseq [[lib {:keys [paths] :as coords}] resolved-deps]
+       (doseq [[lib coords] resolved-deps]
          (when-not (contains? excluded-libs lib)
            (copy-dependency coords out-path libs-path)))
-       (copy-dependency {:paths (:paths deps-map)} out-path libs-path))
+       (let [extra-paths (mapcat (fn [[alias {:keys [extra-paths]}]]
+                                   (if (contains? aliases alias)
+                                     extra-paths
+                                     []))
+                                 (:aliases deps-map))]
+         (copy-dependency {:paths (concat (:paths deps-map) extra-paths)} out-path libs-path)))
      out-path)))
 
 (defn extract-native-dependencies
