@@ -159,6 +159,7 @@
               :or {warn-on-resource-conflicts? true}}]
    (let [deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
+         aliases (set aliases)
          args-map (deps/combine-aliases deps-map aliases)
          resolved-deps (deps/resolve-deps deps-map args-map)
          ^Path out-path (if (string? out-path)
@@ -179,7 +180,12 @@
          (doseq [[lib coords] resolved-deps]
            (when-not (contains? excluded-libs lib)
              (copy-dependency coords out-path)))
-         (copy-dependency {:paths (:paths deps-map)} out-path)))
+         (let [extra-paths (mapcat (fn [[alias {:keys [extra-paths]}]]
+                                     (if (contains? aliases alias)
+                                       extra-paths
+                                       []))
+                                   (:aliases deps-map))]
+           (copy-dependency {:paths (concat (:paths deps-map) extra-paths)} out-path))))
      out-path)))
 
 (defn walk-directory
