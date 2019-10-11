@@ -109,12 +109,14 @@
   "Extract classes from jar dependencies. By default, classes are extracted to the \"target/classes\" folder. This function can be used to circumvent the fact that badigeon.compile/compile does not compile dependencies that are already AOT, such as Clojure itself.
   - out-path: The path of the output directory.
   - deps-map: A map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for \".class\" files. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
+  - aliases: Alias keywords used while resolving dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
   - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false."
   ([]
    (extract-classes-from-dependencies nil))
   ([{:keys [out-path
             deps-map
+            aliases
             excluded-libs
             allow-unstable-deps?] :as opts}]
    (let [out-path (or out-path "target/classes")
@@ -123,7 +125,8 @@
                     out-path)
          deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
-         resolved-deps (deps/resolve-deps deps-map nil)]
+         args-map (deps/combine-aliases deps-map aliases)
+         resolved-deps (deps/resolve-deps deps-map args-map)]
      (when-not allow-unstable-deps?
        (utils/check-for-unstable-deps #(or (utils/snapshot-dep? %) (utils/local-dep? %)) resolved-deps))
      (Files/createDirectories out-path (make-array FileAttribute 0))
