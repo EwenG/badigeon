@@ -138,6 +138,7 @@
   ([out-path servlet-namespace {:keys [compiler-options
 
                                        deps-map
+                                       aliases
                                        excluded-libs
                                        allow-unstable-deps?
 
@@ -156,3 +157,11 @@
                        ^Path out-path
                        (str (.getFileName ^Path out-path) ".war"))]
      (zip/zip out-path war-out-path))))
+
+(comment
+  (let [out-path (make-out-path 'badigeon utils/version)]
+    (badigeon.clean/clean out-path)
+    (war out-path
+         'badigeon.main
+         {:deps-map (deps-reader/slurp-deps "deps.edn")}))
+  )

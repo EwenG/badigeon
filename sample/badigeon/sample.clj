@@ -57,6 +57,8 @@
     :out-path "target/classes"
     ;; A map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for \".class\" files
     :deps-map (deps-reader/slurp-deps "deps.edn")
+    ;; Alias keywords used while resolving dependencies. Default to no alias.
+    :aliases [:1.7 :bench :test]
     ;; The dependencies to be excluded from the search for class files
     :excluded-libs #{'org.clojure/clojure}
     ;; Set to true to allow local dependencies and snpashot versions of maven dependencies.
@@ -124,6 +126,8 @@
     (badigeon.bundle/bundle out-path
                             {;; A map with the same format than deps.edn. :deps-map is used to resolve the project dependencies.
                              :deps-map (deps-reader/slurp-deps "deps.edn")
+                             ;; Alias keywords used while resolving the project resources and its dependencies. Default to no alias.
+                             :aliases [:1.7 :bench :test]
                              ;; The dependencies to be excluded from the produced bundle.
                              :excluded-libs #{'org.clojure/clojure}
                              ;; Set to true to allow local dependencies and snpashot versions of maven dependencies.
@@ -134,6 +138,8 @@
     (bundle/extract-native-dependencies out-path
                                         {;; A map with the same format than deps.edn. :deps-map is used to resolve the project dependencies.
                                          :deps-map (deps-reader/slurp-deps "deps.edn")
+                                         ;; Alias keywords used while resolving dependencies. Default to no alias.
+                                         :aliases [:1.7 :bench :test]
                                          ;; Set to true to allow local dependencies and snpashot versions of maven dependencies.
                                          :allow-unstable-deps? true
                                          ;; The directory where native dependencies are copied.
@@ -199,6 +205,8 @@
 
               ;; A map with the same format than deps.edn. :deps-map is used to resolve the project dependencies.
               :deps-map (deps-reader/slurp-deps "deps.edn")
+              ;; Alias keywords used while resolving dependencies. Default to no alias.
+              :aliases [:1.7 :bench :test]
               ;; The dependencies to be excluded from the produced bundle.
               :excluded-libs #{'org.clojure/clojure}
               ;; Set to true to allow local dependencies and snpashot versions of maven dependencies.
@@ -234,6 +242,8 @@
     (uberjar/bundle out-path
                     {;; A map with the same format than deps.edn. :deps-map is used to resolve the project resources.
                      :deps-map (deps-reader/slurp-deps "deps.edn")
+                     ;; Alias keywords used while resolving the project resources and its dependencies. Default to no alias.
+                     :aliases [:1.7 :bench :test]
                      ;; The dependencies to be excluded from the produced bundle.
                      :excluded-libs #{'org.clojure/clojure}
                      ;; Set to true to allow local dependencies and snpashot versions of maven dependencies.
@@ -249,7 +259,9 @@
     (spit (str (badigeon.utils/make-path out-path "META-INF/MANIFEST.MF"))
           (jar/make-manifest 'badigeon.main))
     ;; Return the paths of all the resource conflicts (multiple resources with the same path) found on the classpath.
-    (uberjar/find-resource-conflicts {:deps-map (deps-reader/slurp-deps "deps.edn")})
+    (uberjar/find-resource-conflicts {:deps-map (deps-reader/slurp-deps "deps.edn")
+                                      ;; Alias keywords used while resolving the project resources and its dependencies. Default to no alias.
+                                      :aliases [:1.7 :bench :test]})
     ;; Zip the bundle into an uberjar
     (zip/zip out-path (str out-path ".jar"))))
 

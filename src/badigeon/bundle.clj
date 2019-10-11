@@ -151,11 +151,14 @@
     (utils/make-out-path artifact-id `{:mvn/version ~version
                                        ~@(when classifier [:classifier classifier]) ~@[]})))
 
+(defn- extra-paths-reducer [aliases extra-paths alias]
+  (into extra-paths (get-in aliases [alias :extra-paths])))
+
 (defn bundle
   "Creates a standalone bundle of the project resources and its dependencies. By default jar dependencies are copied in a \"lib\" folder, under the ouput directory. Other dependencies (local and git) are copied by copying their :paths content to the root of the output directory. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
   - out-path: The path of the output directory.
   - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repositories.
-  - aliases: Alias keywords used while resolving dependencies.
+  - aliases: Alias keywords used while resolving the project resources and its dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
   - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - libs-path: The path of the folder where dependencies are copied, relative to the output folder. Default to \"lib\"."
@@ -169,7 +172,6 @@
    (let [deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
          args-map (deps/combine-aliases deps-map aliases)
-         aliases (set aliases)
          resolved-deps (deps/resolve-deps deps-map args-map)
          ^Path out-path (if (string? out-path)
                           (utils/make-path out-path)
@@ -187,12 +189,12 @@
        (doseq [[lib coords] resolved-deps]
          (when-not (contains? excluded-libs lib)
            (copy-dependency coords out-path libs-path)))
-       (let [extra-paths (mapcat (fn [[alias {:keys [extra-paths]}]]
-                                   (if (contains? aliases alias)
-                                     extra-paths
-                                     []))
-                                 (:aliases deps-map))]
-         (copy-dependency {:paths (concat (:paths deps-map) extra-paths)} out-path libs-path)))
+       (let [extra-paths (reduce (partial extra-paths-reducer (:aliases deps-map))
+                                 [] aliases)
+             all-paths (-> extra-paths
+                           (concat (:paths deps-map))
+                           distinct)]
+         (copy-dependency {:paths all-paths} out-path libs-path)))
      out-path)))
 
 (defn extract-native-dependencies

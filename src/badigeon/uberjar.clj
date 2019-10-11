@@ -63,7 +63,8 @@
 
 (defn find-resource-conflicts
   "Return the paths of all the resource conflicts (multiple resources with the same path) found on the classpath.
-  - deps-map: A map with the same format than a deps.edn map. The dependencies resolved from this map are searched for conflicts. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository."
+  - deps-map: A map with the same format than a deps.edn map. The dependencies resolved from this map are searched for conflicts. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
+  - aliases: Alias keywords used while resolving the project resources and its dependencies."
   ([]
    (find-resource-conflicts nil))
   ([{:keys [deps-map aliases]}]
@@ -75,7 +76,12 @@
                *resource-conflict-paths* #{}]
        (doseq [[lib {:keys [paths] :as coords}] resolved-deps]
          (find-resource-conflicts-paths paths))
-       (find-resource-conflicts-paths (:paths deps-map))
+       (let [extra-paths (reduce (partial #'bundle/extra-paths-reducer (:aliases deps-map))
+                                 [] aliases)
+             all-paths (-> extra-paths
+                           (concat (:paths deps-map))
+                           distinct)]
+         (find-resource-conflicts-paths all-paths))
        *resource-conflict-paths*))))
 
 (defn- copy-file [from to]
@@ -145,7 +151,7 @@
   "Creates a directory that contains all the resources from all the dependencies resolved from \"deps-map\". Resource conflicts (multiple resources with the same path) are not copied to the output directory. Use the \"badigeon.uberjar/find-resource-conflicts\" function to list resource conflicts. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
   - out-path: The path of the output directory.
   - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repositories.
-  - aliases: Alias keywords used while resolving dependencies.
+  - aliases: Alias keywords used while resolving the project resources and its dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced directory. Only the lib is excluded and not its dependencies.
   - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - warn-on-resource-conflicts?. A boolean. When set to true and resource conflicts are found, then a warning is printed to *err*."
@@ -159,7 +165,6 @@
               :or {warn-on-resource-conflicts? true}}]
    (let [deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
-         aliases (set aliases)
          args-map (deps/combine-aliases deps-map aliases)
          resolved-deps (deps/resolve-deps deps-map args-map)
          ^Path out-path (if (string? out-path)
@@ -180,12 +185,12 @@
          (doseq [[lib coords] resolved-deps]
            (when-not (contains? excluded-libs lib)
              (copy-dependency coords out-path)))
-         (let [extra-paths (mapcat (fn [[alias {:keys [extra-paths]}]]
-                                     (if (contains? aliases alias)
-                                       extra-paths
-                                       []))
-                                   (:aliases deps-map))]
-           (copy-dependency {:paths (concat (:paths deps-map) extra-paths)} out-path))))
+         (let [extra-paths (reduce (partial #'bundle/extra-paths-reducer (:aliases deps-map))
+                                   [] aliases)
+               all-paths (-> extra-paths
+                             (concat (:paths deps-map))
+                             distinct)]
+           (copy-dependency {:paths all-paths} out-path))))
      out-path)))
 
 (defn walk-directory
@@ -194,7 +199,7 @@
   (bundle/walk-directory directory f))
 
 (comment
-  (find-resource-conflicts {:deps-map (deps-reader/slurp-deps "deps.edn")})
+  (find-resource-conflicts {:deps-map (deps-reader/slurp-deps "deps.edn") :aliases [:doc]})
   
   (let [out-path (make-out-path 'badigeon utils/version)]
     (badigeon.clean/clean out-path)
