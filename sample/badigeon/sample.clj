@@ -21,7 +21,7 @@
 (defn -main []
   ;; Delete the target directory
   (clean/clean "target"
-               {;; By default, Badigeon does not allow deleting forlders outside the target directory,
+               {;; By default, Badigeon does not allow deleting folders outside the target directory,
                 ;; unless :allow-outside-target? is true
                 :allow-outside-target? false})
 
@@ -61,7 +61,7 @@
     :aliases [:1.7 :bench :test]
     ;; The dependencies to be excluded from the search for class files
     :excluded-libs #{'org.clojure/clojure}
-    ;; Set to true to allow local dependencies and snpashot versions of maven dependencies.
+    ;; Set to true to allow local dependencies and snapshot versions of maven dependencies.
     :allow-unstable-deps? true})
 
   ;; Package the project into a jar file
@@ -130,7 +130,7 @@
                              :aliases [:1.7 :bench :test]
                              ;; The dependencies to be excluded from the produced bundle.
                              :excluded-libs #{'org.clojure/clojure}
-                             ;; Set to true to allow local dependencies and snpashot versions of maven dependencies.
+                             ;; Set to true to allow local dependencies and snapshot versions of maven dependencies.
                              :allow-unstable-deps? true
                              ;; The path of the folder where dependencies are copied, relative to the output folder.
                              :libs-path "lib"})
@@ -140,7 +140,7 @@
                                          :deps-map (deps-reader/slurp-deps "deps.edn")
                                          ;; Alias keywords used while resolving dependencies. Default to no alias.
                                          :aliases [:1.7 :bench :test]
-                                         ;; Set to true to allow local dependencies and snpashot versions of maven dependencies.
+                                         ;; Set to true to allow local dependencies and snapshot versions of maven dependencies.
                                          :allow-unstable-deps? true
                                          ;; The directory where native dependencies are copied.
                                          :native-path "lib"
@@ -209,7 +209,7 @@
               :aliases [:1.7 :bench :test]
               ;; The dependencies to be excluded from the produced bundle.
               :excluded-libs #{'org.clojure/clojure}
-              ;; Set to true to allow local dependencies and snpashot versions of maven dependencies.
+              ;; Set to true to allow local dependencies and snapshot versions of maven dependencies.
               :allow-unstable-deps? true
 
               ;; Additional key/value pairs to add to the jar manifest. If a value is a collection, a manifest section is built for it.
@@ -246,7 +246,7 @@
                      :aliases [:1.7 :bench :test]
                      ;; The dependencies to be excluded from the produced bundle.
                      :excluded-libs #{'org.clojure/clojure}
-                     ;; Set to true to allow local dependencies and snpashot versions of maven dependencies.
+                     ;; Set to true to allow local dependencies and snapshot versions of maven dependencies.
                      :allow-unstable-deps? true
                      ;; When set to true and resource conflicts are found, then a warning is printed to *err*
                      :warn-on-resource-conflicts? true})
