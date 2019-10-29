@@ -1,3 +1,8 @@
+# 0.0.10
+
+- Update to tools.deps.alpha version 0.8.578
+- Add support to pass in aliases to relevant functions
+
 # 0.0.9
 
 - Add the badigeon.uberjar/walk-directory function
