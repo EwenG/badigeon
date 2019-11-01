@@ -36,7 +36,7 @@
   (javac/javac "src-java" {;; Emit class files to the target/classes directory
                            :compile-path "target/classes"
                            ;; Additional options used by the javac command
-                           :compiler-options ["-cp" "src:target/classes" "-target" "1.6"
+                           :javac-options ["-cp" "src:target/classes" "-target" "1.6"
                                               "-source" "1.6" "-Xlint:-options"]})
 
   ;; AOT compiles the badigeon.main namespace. Badigeon AOT compiles Clojure sources in a fresh classloader, using the clojure.core/compile function. As a consequence, all the namespaces and their dependencies always get recompiled, unlike with the clojure.core/compile function. Beware of side effects triggered while loading the compiled namespaces.
