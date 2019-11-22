@@ -1,4 +1,4 @@
 {:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.9.0"}
-        org.clojure/tools.deps.alpha {:mvn/version "0.8.578"}}
+        org.clojure/tools.deps.alpha {:mvn/version "0.8.599"}}
  :aliases {:doc {:extra-paths ["src-doc"]}}}
