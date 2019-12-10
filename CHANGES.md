@@ -1,3 +1,10 @@
+# 0.0.11
+
+- badigeon.bundle/bundle now automatically resolves dependencies conflicts when multiple dependencies have the same artifact-id and version number
+- Document the badigeon.war/make-out-path function
+- badigeon.war/make-out-path now correctly handles the version number to generate the out path
+- Update to tools.deps.alpha version 0.8.599
+
 # 0.0.10
 
 - Update to tools.deps.alpha version 0.8.578
