@@ -46,8 +46,9 @@
       [:servlet-name ~servlet-name]
       [:url-pattern ~url-pattern]]]))
 
-(defn make-out-path [lib version]
+(defn make-out-path
   "Build a path using a library name and its version number."
+  [lib version]
   (bundle/make-out-path lib version))
 
 (defn war-exploded

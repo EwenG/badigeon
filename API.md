@@ -234,6 +234,12 @@ Arglists: `([directory-path] [directory-path out-path])`
 
 Zip a directory. By default, outputs the zipped directory to a file with the same name than "directory-path" but with a .zip extension. The directory to be zipped is often the directory created by the Badigeon "bundle" function.
 
+## `badigeon.war/make-out-path`
+
+Arglists: `([lib version])`
+
+Build a path using a library name and its version number.
+
 ## `badigeon.war/war-exploded`
 
 Arglists: `([out-path servlet-namespace] [out-path servlet-namespace {:keys [compiler-options deps-map aliases excluded-libs allow-unstable-deps? manifest servlet-version servlet-name servlet-class url-pattern listener-namespace listener-class], :as opts}])`
