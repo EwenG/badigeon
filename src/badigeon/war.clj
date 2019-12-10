@@ -126,9 +126,9 @@
                          :compiler-options compiler-options}))
      (binding [bundle/*out-path* out-path
                bundle/*copied-paths* #{}]
-       (doseq [[lib {:keys [paths] :as coords}] resolved-deps]
+       (doseq [[lib coords] resolved-deps]
          (when-not (contains? excluded-libs lib)
-           (#'bundle/copy-dependency coords out-path libs-path))))
+           (#'bundle/copy-dep-dependency lib coords out-path libs-path))))
      out-path)))
 
 (defn war

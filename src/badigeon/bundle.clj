@@ -132,17 +132,39 @@
         (Files/copy from to utils/copy-options)))))
 
 (defn- copy-dependency
-  ([coords out-path]
-   (copy-dependency coords out-path (utils/make-path "lib")))
-  ([{:keys [paths]} ^Path out-path ^Path libs-path]
-   (doseq [path paths]
-     (let [f (io/file path)]
-       (when (.exists f)
-         (cond (and (not (.isDirectory f)) (.endsWith (str path) ".jar"))
-               (let [to (-> out-path (.resolve libs-path) (.resolve (.getName f)))]
-                 (copy-file path to))
-               (.isDirectory f)
-               (copy-directory path out-path)))))))
+  [{:keys [paths] :as coords} ^Path out-path]
+  (doseq [path paths]
+    (let [f (io/file path)]
+      (when (.exists f)
+        (when (.isDirectory f)
+          (copy-directory path out-path))))))
+
+(defn- ^String copy-dep-make-name [lib {:keys [:mvn/version] :as coords}]
+  (str (name lib) "-" version ".jar"))
+
+(defn- ^String copy-dep-make-unique-name [lib coords]
+  (str (namespace lib) "." (copy-dep-make-name lib coords)))
+
+(defn- copy-dep-uniquify-path [lib coords ^Path out-path ^Path libs-path to]
+  (let [relative-path (when (some? *out-path*) (.relativize *out-path* to))]
+    (if (and (some? *copied-paths*)
+             (get *copied-paths* relative-path))
+      (let [f-name (copy-dep-make-unique-name lib coords)
+            to (-> out-path (.resolve libs-path) (.resolve f-name))]
+        to)
+      to)))
+
+(defn- copy-dep-dependency [lib {:keys [paths] :as coords} ^Path out-path ^Path libs-path]
+  (doseq [path paths]
+    (let [f (io/file path)]
+      (when (and (.exists f) (not (.isDirectory f)) (.endsWith (str path) ".jar"))
+        (let [f-name (copy-dep-make-name lib coords)
+              to (-> out-path (.resolve libs-path) (.resolve f-name))
+              ;; The output path may not be unique since we only use the artifact id and the version
+              ;; of dependencies (we do not use the group-id) to generate an output path.
+              ;; In case of a conflict, then we also use the group-id
+              to (copy-dep-uniquify-path lib coords out-path libs-path to)]
+          (copy-file path to))))))
 
 (defn make-out-path
   "Build a path using a library name and its version number."
@@ -188,13 +210,13 @@
                *copied-paths* #{}]
        (doseq [[lib coords] resolved-deps]
          (when-not (contains? excluded-libs lib)
-           (copy-dependency coords out-path libs-path)))
+           (copy-dep-dependency lib coords out-path libs-path)))
        (let [extra-paths (reduce (partial extra-paths-reducer (:aliases deps-map))
                                  [] aliases)
              all-paths (-> extra-paths
                            (concat (:paths deps-map))
                            distinct)]
-         (copy-dependency {:paths all-paths} out-path libs-path)))
+         (copy-dependency {:paths all-paths} out-path)))
      out-path)))
 
 (defn extract-native-dependencies
@@ -403,13 +425,13 @@
     #_(badigeon.compile/compile 'badigeon.main
                               {:compiler-options {:elide-meta [:doc :file :line :added]
                                                   :direct-linking true}})
-    #_(bundle out-path {:deps-map deps-map
+    (bundle out-path {:deps-map deps-map
                         :allow-unstable-deps? true})
     ;; overtone/scsynth {:mvn/version "3.10.2"}
     #_(extract-native-dependencies out-path {:deps-map deps-map
                                              :allow-unstable-deps? true
                                              :native-prefixes {'overtone/scsynth "native"}})
-    (extract-native-dependencies-from-file
+    #_(extract-native-dependencies-from-file
      out-path
      (str (System/getProperty "user.home")
           "/.m2/repository/overtone/scsynth/3.10.2/scsynth-3.10.2.jar")
