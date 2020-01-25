@@ -59,7 +59,7 @@
   - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
   - aliases: Alias keywords used while resolving dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
-  - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
+  - allow-unstable-deps?: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - manifest: A map of additionel entries to the war manifest. Values of the manifest map can be maps to represent manifest sections. By default, the war manifest contains the \"Created-by\", \"Built-By\" and \"Build-Jdk\" entries.
   - servlet-version: The version of the servlet spec that we claim to conform to. Attributes corresponding to this version will be added to the web-app element of the web.xml. If not specified, defaults to 2.5.
   - servlet-name: The name of the servlet (in web.xml). Defaults to the servlet-namespace name.

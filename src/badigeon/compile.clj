@@ -111,7 +111,7 @@
   - deps-map: A map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for \".class\" files. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
   - aliases: Alias keywords used while resolving dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
-  - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false."
+  - allow-unstable-deps?: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false."
   ([]
    (extract-classes-from-dependencies nil))
   ([{:keys [out-path
