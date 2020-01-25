@@ -20,7 +20,7 @@
     (doseq [^JarEntry entry entries
             :when (not (.isDirectory entry))]
       (let [entry-path-str (.getName entry)]
-        (when (contains? *resource-conflict-paths* entry-path-str)
+        (when (contains? *resource-paths* entry-path-str)
           (set! *resource-conflict-paths* (conj *resource-conflict-paths* entry-path-str)))
         (set! *resource-paths* (conj *resource-paths* entry-path-str))))))
 
