@@ -1,5 +1,6 @@
 # 0.0.11
 
+- Bug fix: Resource conficts in jar file were not always detected
 - badigeon.bundle/bundle now automatically resolves dependencies conflicts when multiple dependencies have the same artifact-id and version number
 - Document the badigeon.war/make-out-path function
 - badigeon.war/make-out-path now correctly handles the version number to generate the out path
