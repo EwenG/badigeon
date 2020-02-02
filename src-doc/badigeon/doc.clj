@@ -43,7 +43,8 @@
            #'bundle/walk-directory
            #'bundle/bin-script
            #'uberjar/make-out-path #'uberjar/bundle
-           #'uberjar/find-resource-conflicts #'uberjar/walk-directory
+           #'uberjar/find-resource-conflicts #'uberjar/merge-resource-conflicts
+           #'uberjar/walk-directory
            #'jlink/jlink #'zip/zip
            #'war/make-out-path #'war/war-exploded #'war/war #'exec/exec
            #'utils/make-path])
