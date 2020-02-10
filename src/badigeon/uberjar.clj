@@ -196,12 +196,12 @@
      (Files/createDirectories out-path (make-array FileAttribute 0))
      (let [resource-conflict-paths (find-resource-conflicts* {:deps-map deps-map
                                                               :aliases aliases})
+           _ (when (and warn-on-resource-conflicts? (seq resource-conflict-paths))
+               (binding [*out* *err*]
+                 (println (str "Warning: Resource conflicts found: "
+                               (pr-str (keys resource-conflict-paths))))))
            resource-conflict-paths (reduce-kv resource-conflicts-remove-classes-reducer
                                               {} resource-conflict-paths)]
-       (when (and warn-on-resource-conflicts? (seq resource-conflict-paths))
-         (binding [*out* *err*]
-           (println (str "Warning: Resource conflicts found: "
-                         (pr-str (keys resource-conflict-paths))))))
        (binding [*resource-conflict-paths* resource-conflict-paths]
          (doseq [[lib coords] resolved-deps]
            (when-not (contains? excluded-libs lib)
