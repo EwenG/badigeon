@@ -161,6 +161,11 @@
   [lib version]
   (bundle/make-out-path lib version))
 
+(defn- resource-conflicts-remove-classes-reducer [resource-conflicts k v]
+  (if (.endsWith (str k) ".class")
+    resource-conflicts
+    (assoc resource-conflicts k v)))
+
 (defn bundle
   "Creates a directory that contains all the resources from all the dependencies resolved from \"deps-map\". Resource conflicts (multiple resources with the same path) are not copied to the output directory. Use the \"badigeon.uberjar/find-resource-conflicts\" function to list resource conflicts. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
   - out-path: The path of the output directory.
@@ -190,7 +195,9 @@
         resolved-deps))
      (Files/createDirectories out-path (make-array FileAttribute 0))
      (let [resource-conflict-paths (find-resource-conflicts* {:deps-map deps-map
-                                                              :aliases aliases})]
+                                                              :aliases aliases})
+           resource-conflict-paths (reduce-kv resource-conflicts-remove-classes-reducer
+                                              {} resource-conflict-paths)]
        (when (and warn-on-resource-conflicts? (seq resource-conflict-paths))
          (binding [*out* *err*]
            (println (str "Warning: Resource conflicts found: "
