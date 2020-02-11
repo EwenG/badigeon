@@ -167,7 +167,7 @@
     (assoc resource-conflicts k v)))
 
 (defn bundle
-  "Creates a directory that contains all the resources from all the dependencies resolved from \"deps-map\". Resource conflicts (multiple resources with the same path) are not copied to the output directory. Use the \"badigeon.uberjar/find-resource-conflicts\" function to list resource conflicts. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
+  "Creates a directory that contains all the resources from all the dependencies resolved from \"deps-map\". Resource conflicts (multiple resources with the same path) are not copied to the output directory. \".class\" files are an exception, they are always copied to the ouput directory. Use the \"badigeon.uberjar/find-resource-conflicts\" function to list resource conflicts. By default, an exception is thrown when the project depends on a local dependency or a SNAPSHOT version of a dependency.
   - out-path: The path of the output directory.
   - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repositories.
   - aliases: Alias keywords used while resolving the project resources and its dependencies.
