@@ -221,11 +221,11 @@
 
 ;; Resource conflicts merging
 
-(defn- resource->input-stream [path resource]
+(defn- ^java.io.InputStream resource->input-stream [path resource]
   (if (instance? JarFile resource)
-    (let [jar-entry (.getJarEntry resource path)]
-      (.getInputStream resource jar-entry))
-    (FileInputStream. (.toFile resource))))
+    (let [jar-entry (.getJarEntry ^JarFile resource path)]
+      (.getInputStream ^JarFile resource jar-entry))
+    (FileInputStream. (.toFile ^Path resource))))
 
 (defn- merger-reducer
   ([{:keys [read merge]} path resource]
@@ -235,7 +235,8 @@
    (let [r (merger-reducer merger path resource)]
      (merge acc r))))
 
-(defn- merge-with-merger [{:keys [read merge write] :as merger} ^Path out-path path resources]
+(defn- merge-with-merger [{:keys [read merge write] :as merger}
+                          ^Path out-path ^String path resources]
   {:pre [(and read merge write)]}
   (let [out-path (.resolve out-path path)
         init-val (merger-reducer merger path (first resources))
@@ -259,7 +260,7 @@
   - out-path: The path of the output directory.
   - deps-map: A map with the same format than a deps.edn map. The dependencies resolved from this map are searched for conflicts. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
   - aliases: Alias keywords used while resolving the project resources and its dependencies.
-  - resource-mergers: A map which keys are strings or regexps and values are maps called \"mergers\". \"Mergers\" are used to merge the resources which path matches one of the keys of \"resource-mergers\". \"Mergers\" must be maps containing three keys: :read, :merge, and :write. Default to \"badigeon.uberjar/default-resource-mergers\""
+  - resource-mergers: A map which keys are strings or regexps and values are maps called \"mergers\". \"Mergers\" are used to merge the resources which path matches one of the keys of \"resource-mergers\". \"Mergers\" must be maps containing three keys: :read, :merge, and :write. Default to \"badigeon.uberjar/default-resource-mergers\"."
   ([out-path]
    (merge-resource-conflicts out-path nil))
   ([out-path {:keys [deps-map aliases resource-mergers]
