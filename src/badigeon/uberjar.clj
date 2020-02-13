@@ -22,10 +22,13 @@
     (doseq [^JarEntry entry entries
             :when (not (.isDirectory entry))]
       (let [entry-path-str (.getName entry)]
-        (when (contains? *resource-paths* entry-path-str)
-          (if (contains? *resource-conflict-paths* entry-path-str)
-            (set! *resource-conflict-paths* (update *resource-conflict-paths* entry-path-str conj jar-file))
-            (set! *resource-conflict-paths* (assoc *resource-conflict-paths* entry-path-str #{(get *resource-paths* entry-path-str) jar-file}))))
+        (when-let [previous-jar-file (get *resource-paths* entry-path-str)]
+          (let [all-root-paths (-> (get *resource-conflict-paths* entry-path-str)
+                                   (conj previous-jar-file jar-file)
+                                   set)]
+            (when (> (count all-root-paths) 1)
+              (set! *resource-conflict-paths* (assoc *resource-conflict-paths* entry-path-str
+                                                     all-root-paths)))))
         (set! *resource-paths* (assoc *resource-paths* entry-path-str jar-file))))))
 
 (defn- make-find-resource-conflicts-directory-file-visitor [^Path root-path]
@@ -35,12 +38,17 @@
     (preVisitDirectory [_ dir attrs]
       FileVisitResult/CONTINUE)
     (visitFile [_ path attrs]
-      (let [resource-path (str (.relativize root-path path))]
-        (when (contains? *resource-paths* resource-path)
-          (if (contains? *resource-conflict-paths* resource-path)
-            (set! *resource-conflict-paths* (update *resource-conflict-paths* resource-path conj path))
-            (set! *resource-conflict-paths* (assoc *resource-conflict-paths* resource-path #{(get *resource-paths* resource-path) path}))))
-        (set! *resource-paths* (assoc *resource-paths* resource-path path))
+      (let [resource-path (str (.relativize root-path path))
+            absolute-root-path (.normalize (.toAbsolutePath root-path))]
+        (when-let [previous-absolute-root-path (get *resource-paths* resource-path)]
+          (let [all-root-paths (-> (get *resource-conflict-paths* resource-path)
+                                   (conj previous-absolute-root-path
+                                         absolute-root-path)
+                                   set)]
+            (when (> (count all-root-paths) 1)
+              (set! *resource-conflict-paths* (assoc *resource-conflict-paths* resource-path
+                                                     all-root-paths)))))
+        (set! *resource-paths* (assoc *resource-paths* resource-path absolute-root-path))
         FileVisitResult/CONTINUE))
     (visitFileFailed [_ file exception]
       (cond (instance? FileSystemLoopException exception)
@@ -87,6 +95,14 @@
          (find-resource-conflicts-paths all-paths))
        *resource-conflict-paths*))))
 
+(defn- resource-root-path->string [v]
+  (if (instance? JarFile v)
+    (.getName v)
+    (str v)))
+
+(defn- find-resource-conflicts-reducer [res-conflicts k v]
+  (assoc res-conflicts k (into #{} (map resource-root-path->string) v)))
+
 (defn find-resource-conflicts
   "Return the paths of all the resource conflicts (multiple resources with the same path) found on the classpath.
   - deps-map: A map with the same format than a deps.edn map. The dependencies resolved from this map are searched for conflicts. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
@@ -94,9 +110,8 @@
   ([]
    (find-resource-conflicts nil))
   ([{:keys [deps-map aliases] :as params}]
-   (->> (find-resource-conflicts* params)
-        keys
-        (into #{}))))
+   (let [res-conflicts (find-resource-conflicts* params)]
+     (reduce-kv find-resource-conflicts-reducer {} res-conflicts))))
 
 (defn- copy-file [from to]
   (let [^Path to (if (string? to)
@@ -284,7 +299,8 @@
 (comment
   (merge-resource-conflicts (make-out-path 'badigeon utils/version))
   
-  (find-resource-conflicts {:deps-map (deps-reader/slurp-deps "deps.edn") :aliases [:doc]})
+  (find-resource-conflicts
+   {:deps-map (deps-reader/slurp-deps "deps.edn") :aliases [:doc]})
   
   (let [out-path (make-out-path 'badigeon utils/version)]
     (badigeon.clean/clean out-path)
