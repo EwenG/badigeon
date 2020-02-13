@@ -271,7 +271,7 @@
 ;; We don't set the last modified date of the out file while merging since
 ;; this is not a copy of a single input file
 (defn merge-resource-conflicts
-  "Merge all the resource conflicts (multiple resources with the same path) found on the classpath.
+  "Merge the resource conflicts (multiple resources with the same path) found on the classpath and handled by the provided \"resource-mergers\".
   - out-path: The path of the output directory.
   - deps-map: A map with the same format than a deps.edn map. The dependencies resolved from this map are searched for conflicts. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
   - aliases: Alias keywords used while resolving the project resources and its dependencies.
