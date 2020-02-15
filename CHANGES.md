@@ -1,3 +1,5 @@
+# 0.0.12
+
 # 0.0.11
 
 - The badigeon.uberjar/bundle function now always copies ".class" files to the output directory, even in case of conflicts.
