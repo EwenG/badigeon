@@ -22,7 +22,7 @@ Latest release: 0.0.11
 
 ```clojure
 badigeon/badigeon {:git/url "https://github.com/EwenG/badigeon.git"
-                   :sha "41b580c475c595643897c63aada9283e00f1467e"
+                   :sha "1edf7ae465db870ec0066f28226edb9b04873b70"
                    :tag "0.0.11"}
 ```
 
