@@ -44,7 +44,7 @@ Extract classes from jar dependencies. By default, classes are extracted to the 
   - deps-map: A map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for ".class" files. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
   - aliases: Alias keywords used while resolving dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
-  - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
+  - allow-unstable-deps?: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
 
 ## `badigeon.jar/jar`
 
@@ -137,7 +137,7 @@ Creates a standalone bundle of the project resources and its dependencies. By de
   - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repositories.
   - aliases: Alias keywords used while resolving the project resources and its dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
-  - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
+  - allow-unstable-deps?: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - libs-path: The path of the folder where dependencies are copied, relative to the output folder. Default to "lib".
 
 ## `badigeon.bundle/extract-native-dependencies`
@@ -148,7 +148,7 @@ Extract native dependencies (.so, .dylib, .dll, .a, .lib, .scx files) from jar d
   - out-path: The path of the output directory.
   - deps-map: A map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for native dependencies. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
   - aliases: Alias keywords used while resolving dependencies.
-  - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
+  - allow-unstable-deps?: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - native-path: The path of the folder where native dependencies are extracted, relative to the output folder. Default to "lib".
   - native-prefixes: A map from libs (symbol) to a path prefix (string). Libs with a specified native-prefix are searched for native dependencies under the path of the native prefix only. The native-prefix is excluded from the output path of the native dependency.
   - native-extensions: A collection of native extension regexp. Files which name match one of these regexps are considered a native dependency. Default to badigeon.bundle/native-extensions.
@@ -195,21 +195,31 @@ Build a path using a library name and its version number.
 
 Arglists: `([out-path] [out-path {:keys [deps-map aliases excluded-libs allow-unstable-deps? warn-on-resource-conflicts?]}])`
 
-Creates a directory that contains all the resources from all the dependencies resolved from "deps-map". Resource conflicts (multiple resources with the same path) are not copied to the output directory. Use the "badigeon.uberjar/find-resource-conflicts" function to list resource conflicts. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
+Creates a directory that contains all the resources from all the dependencies resolved from "deps-map". Resource conflicts (multiple resources with the same path) are not copied to the output directory. ".class" files are an exception, they are always copied to the ouput directory. Use the "badigeon.uberjar/find-resource-conflicts" function to list resource conflicts. By default, an exception is thrown when the project depends on a local dependency or a SNAPSHOT version of a dependency.
   - out-path: The path of the output directory.
   - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repositories.
   - aliases: Alias keywords used while resolving the project resources and its dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced directory. Only the lib is excluded and not its dependencies.
-  - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
+  - allow-unstable-deps?: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - warn-on-resource-conflicts?. A boolean. When set to true and resource conflicts are found, then a warning is printed to \*err\*.
 
 ## `badigeon.uberjar/find-resource-conflicts`
 
-Arglists: `([] [{:keys [deps-map aliases]}])`
+Arglists: `([] [{:keys [deps-map aliases], :as params}])`
 
 Return the paths of all the resource conflicts (multiple resources with the same path) found on the classpath.
   - deps-map: A map with the same format than a deps.edn map. The dependencies resolved from this map are searched for conflicts. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
   - aliases: Alias keywords used while resolving the project resources and its dependencies.
+
+## `badigeon.uberjar/merge-resource-conflicts`
+
+Arglists: `([out-path] [out-path {:keys [deps-map aliases resource-mergers]}])`
+
+Merge the resource conflicts (multiple resources with the same path) found on the classpath and handled by the provided "resource-mergers".
+  - out-path: The path of the output directory.
+  - deps-map: A map with the same format than a deps.edn map. The dependencies resolved from this map are searched for conflicts. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
+  - aliases: Alias keywords used while resolving the project resources and its dependencies.
+  - resource-mergers: A map which keys are strings or regexps and values are maps called "mergers". "Mergers" are used to merge the resources which path matches one of the keys of "resource-mergers". "Mergers" must be maps containing three keys: :read, :merge, and :write. Default to "badigeon.uberjar/default-resource-mergers".
 
 ## `badigeon.uberjar/walk-directory`
 
@@ -251,7 +261,7 @@ Creates an exploded war directory. The produced war can be run on legacy java se
   - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repository.
   - aliases: Alias keywords used while resolving dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
-  - allow-unstable-deps: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
+  - allow-unstable-deps?: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
   - manifest: A map of additionel entries to the war manifest. Values of the manifest map can be maps to represent manifest sections. By default, the war manifest contains the "Created-by", "Built-By" and "Build-Jdk" entries.
   - servlet-version: The version of the servlet spec that we claim to conform to. Attributes corresponding to this version will be added to the web-app element of the web.xml. If not specified, defaults to 2.5.
   - servlet-name: The name of the servlet (in web.xml). Defaults to the servlet-namespace name.

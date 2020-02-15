@@ -1,5 +1,8 @@
 # 0.0.11
 
+- The badigeon.uberjar/bundle function now always copies ".class" files to the output directory, even in case of conflicts.
+- The badigeon.uberjar/find-resource-conflicts function now returns a map from resource path to a collection of directories/jar files that contain the resource. 
+- Add the badigeon.uberjar/merge-resource-conflicts function
 - Bug fix: Resource conficts in jar file were not always detected
 - badigeon.bundle/bundle now automatically resolves dependencies conflicts when multiple dependencies have the same artifact-id and version number
 - Document the badigeon.war/make-out-path function
