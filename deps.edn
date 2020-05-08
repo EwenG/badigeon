@@ -1,4 +1,5 @@
 {:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.9.0"}
         org.clojure/tools.deps.alpha {:mvn/version "0.8.677"}}
- :aliases {:doc {:extra-paths ["src-doc"]}}}
+ :aliases {:doc {:extra-paths ["src-doc"]}
+           :build {:extra-paths ["src-build"]}}}
