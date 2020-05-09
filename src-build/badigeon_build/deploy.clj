@@ -1,4 +1,4 @@
-(ns badigeon-build-build
+(ns badigeon-build.deploy
   (:require [badigeon.jar :as jar]
             [badigeon.install :as install]
             [badigeon.utils :as utils]
@@ -19,4 +19,3 @@
      {:id "clojars"
       :url "https://repo.clojars.org/"}
      {:credentials {:username "ewen" :password password}})))
-
