@@ -157,14 +157,17 @@
 (defn- copy-dep-dependency [lib {:keys [paths] :as coords} ^Path out-path ^Path libs-path]
   (doseq [path paths]
     (let [f (io/file path)]
-      (when (and (.exists f) (not (.isDirectory f)) (.endsWith (str path) ".jar"))
-        (let [f-name (copy-dep-make-name lib coords)
-              to (-> out-path (.resolve libs-path) (.resolve f-name))
-              ;; The output path may not be unique since we only use the artifact id and the version
-              ;; of dependencies (we do not use the group-id) to generate an output path.
-              ;; In case of a conflict, then we also use the group-id
-              to (copy-dep-uniquify-path lib coords out-path libs-path to)]
-          (copy-file path to))))))
+      (when (.exists f)
+        (cond (and (not (.isDirectory f)) (.endsWith (str path) ".jar"))
+              (let [f-name (copy-dep-make-name lib coords)
+                    to (-> out-path (.resolve libs-path) (.resolve f-name))
+                    ;; The output path may not be unique since we only use the artifact id and the version
+                    ;; of dependencies (we do not use the group-id) to generate an output path.
+                    ;; In case of a conflict, then we also use the group-id
+                    to (copy-dep-uniquify-path lib coords out-path libs-path to)]
+                (copy-file path to))
+              (.isDirectory f)
+              (copy-directory path out-path))))))
 
 (defn make-out-path
   "Build a path using a library name and its version number."
