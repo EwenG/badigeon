@@ -1,3 +1,7 @@
+# 0.0.13
+
+- Bugfix: Copy local dependencies when using badigeon.bundle/bundle 
+
 # 0.0.12
 
 - Update to tools.deps.alpha version 0.8.677
