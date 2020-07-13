@@ -114,7 +114,8 @@
     (when (and (not= root-path path)
                (not (when exclusion-predicate (exclusion-predicate root-path path))))
       (let [f (.toFile path)
-            relative-path (str (utils/relativize-path root-path path))]
+            relative-path (str (utils/relativize-path root-path path))
+            relative-path (.replace relative-path (System/getProperty "file.separator") "/")]
         (put-jar-entry! jar-out f relative-path)))))
 
 (defn- inclusion-path-visitor [^JarOutputStream jar-out pred root-path ^Path path attrs]

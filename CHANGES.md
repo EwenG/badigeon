@@ -1,3 +1,7 @@
+# 1.0
+
+- Bugfix: Fix the path of jar entries copied from resources when building on windows
+
 # 0.0.13
 
 - Bugfix: Copy local dependencies when using badigeon.bundle/bundle 
