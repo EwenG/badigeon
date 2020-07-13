@@ -2,7 +2,7 @@
   (:require [clojure.tools.deps.alpha.util.maven :as maven])
   (:import [java.nio.file Paths Path StandardCopyOption]))
 
-(def ^:const version "0.0.14-SNAPSHOT")
+(def ^:const version "1.0")
 
 (def ^"[Ljava.nio.file.StandardCopyOption;" copy-options
   (into-array StandardCopyOption
