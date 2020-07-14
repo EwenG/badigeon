@@ -165,7 +165,7 @@
   - maven-coords: A map with the same format than tools.deps maven coordinates.
   - out-path: The path of the produced jar file. When not provided, a default out-path is generated from the lib and maven coordinates.
   - main: A namespace to be added to the \"Main\" entry to the jar manifest. Default to nil.
-  - manifest: A map of additionel entries to the jar manifest. Values of the manifest map can be maps to represent manifest sections. By default, the jar manifest contains the \"Created-by\", \"Built-By\" and \"Build-Jdk\" entries.
+  - manifest: A map of additional entries to the jar manifest. Values of the manifest map can be maps to represent manifest sections. By default, the jar manifest contains the \"Created-by\", \"Built-By\" and \"Build-Jdk\" entries.
   - paths: A vector of the paths containing the resources to be bundled into the jar. Default to the paths of the deps.edn file.
   - deps: The dependencies of the project. deps have the same format than the :deps entry of a tools.deps map. Dependencies are copied to the pom.xml file produced while generating the jar file. Default to the deps.edn dependencies of the project (excluding the system-level and user-level deps.edn dependencies).
   - mvn/repos: Repositories to be copied to the pom.xml file produced while generating the jar. Must have same format than the :mvn/repos entry of deps.edn. Default to nil.
@@ -200,11 +200,14 @@
          out-path (if (and (instance? Path out-path) (not (.isAbsolute ^Path out-path)))
                     (.resolve ^Path root-path ^Path out-path)
                     out-path)
+         deps-map (when-not (.exists (io/file "deps.edn"))
+                    {})
          ;; Do not merge system and user wide deps.edn files
-         deps-map (-> (deps-reader/slurp-deps "deps.edn")
-                      ;; Replositories must be explicilty provided as parameters
-                      (dissoc :mvn/repos)
-                      (merge (select-keys options [:paths :deps :mvn/repos])))
+         deps-map (or deps-map
+                      (-> (deps-reader/slurp-deps "deps.edn")
+                          ;; Replositories must be explicilty provided as parameters
+                          (dissoc :mvn/repos)
+                          (merge (select-keys options [:paths :deps :mvn/repos]))))
          the-manifest (-> (make-manifest main manifest)
                           (.getBytes)
                           (ByteArrayInputStream.)
