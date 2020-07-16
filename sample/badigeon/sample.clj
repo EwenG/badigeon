@@ -263,11 +263,10 @@
                                       ;; Alias keywords used while resolving the project resources and its dependencies. Default to no alias.
                                       :aliases [:1.7 :bench :test]})
     ;; Merge the resource conflicts (multiple resources with the same path) found on the classpath and handled by the provided \"resource-mergers\"
-    (uberjar/merge-resource-conflicts {:out-path out-path
-                                       :deps-map (deps-reader/slurp-deps "deps.edn")
-                                       ;; Alias keywords used while resolving the project resources and its dependencies. Default to no alias.
-                                       :aliases [:1.7 :bench :test]
-                                       :resource-mergers uberjar/default-resource-mergers})
+    (uberjar/merge-resource-conflicts out-path {:deps-map (deps-reader/slurp-deps "deps.edn")
+                                                ;; Alias keywords used while resolving the project resources and its dependencies. Default to no alias.
+                                                :aliases [:1.7 :bench :test]
+                                                :resource-mergers uberjar/default-resource-mergers})
     ;; Zip the bundle into an uberjar
     (zip/zip out-path (str out-path ".jar"))))
 
