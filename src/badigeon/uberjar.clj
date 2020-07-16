@@ -97,7 +97,7 @@
 
 (defn- resource-root-path->string [v]
   (if (instance? JarFile v)
-    (.getName v)
+    (.getName ^JarFile v)
     (str v)))
 
 (defn- find-resource-conflicts-reducer [res-conflicts k v]
@@ -256,8 +256,10 @@
   (let [out-path (.resolve out-path path)
         init-val (merger-reducer merger path (first resources))
         resources (rest resources)
-        merged-resource (reduce (partial merger-reducer merger path) init-val resources)]
-    (with-open [file-out (FileOutputStream. (.toFile out-path))]
+        merged-resource (reduce (partial merger-reducer merger path) init-val resources)
+        out-file (.toFile out-path)]
+    (.mkdirs (.getParentFile out-file))
+    (with-open [file-out (FileOutputStream. out-file)]
       (write file-out merged-resource))))
 
 (def default-resource-mergers
