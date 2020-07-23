@@ -15,7 +15,7 @@
             [badigeon.jlink :as jlink]
             [badigeon.war :as war]
             [badigeon.exec :as exec]
-            [clojure.tools.deps.alpha.reader :as deps-reader]
+            [clojure.tools.deps.alpha :as deps]
             [clojure.tools.deps.alpha.util.maven :as maven]))
 
 (defn -main []
@@ -56,7 +56,7 @@
    {;; Copy class files to the target/classes directory
     :out-path "target/classes"
     ;; A map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for \".class\" files
-    :deps-map (deps-reader/slurp-deps "deps.edn")
+    :deps-map (deps/slurp-deps "deps.edn")
     ;; Alias keywords used while resolving dependencies. Default to no alias.
     :aliases [:1.7 :bench :test]
     ;; The dependencies to be excluded from the search for class files
@@ -82,9 +82,9 @@
             :mvn/repos '{"clojars" {:url "https://repo.clojars.org/"}}
             ;; A predicate used to excludes files from beeing added to the jar. The predicate is a function of two parameters: The path of the directory beeing visited (among the :paths of the project) and the path of the file beeing visited under this directory.
             :exclusion-predicate badigeon.jar/default-exclusion-predicate
-            ;; A function to add files to the jar that would otherwise not have been added to it. The function must take two parameters: the path of the root directory of the project and the file being visited under this directory. When the function returns a falsy value, the file is not added to the jar. Otherwise the function must return a string which represents the path within the jar where the file is copied. 
+            ;; A function to add files to the jar that would otherwise not have been added to it. The function must take two parameters: the path of the root directory of the project and the file being visited under this directory. When the function returns a falsy value, the file is not added to the jar. Otherwise the function must return a string which represents the path within the jar where the file is copied.
             :inclusion-path (partial badigeon.jar/default-inclusion-path "badigeon" "badigeon")
-            ;; By default git and local dependencies are not allowed. Set allow-all-dependencies? to true to allow them 
+            ;; By default git and local dependencies are not allowed. Set allow-all-dependencies? to true to allow them
             :allow-all-dependencies? true})
 
   ;; Install the previously created jar file into the local maven repository.
@@ -103,7 +103,7 @@
         ;; Artifacts must be signed when deploying non-snapshot versions of artifacts.
         artifacts (badigeon.sign/sign artifacts {;; The gpg command can be customized
                                                  :command "gpg"
-                                                 ;; The gpg key used for signing. Defaults to the first private key found in your keyring. 
+                                                 ;; The gpg key used for signing. Defaults to the first private key found in your keyring.
                                                  :gpg-key "root@eruditorum.org"})
         ;; Prompt for a password using the process standard input and without echoing.
         password (badigeon.prompt/prompt-password "Password: ")]
@@ -125,7 +125,7 @@
         out-path (badigeon.bundle/make-out-path 'badigeon/badigeon "0.0.1-SNAPSHOT")]
     (badigeon.bundle/bundle out-path
                             {;; A map with the same format than deps.edn. :deps-map is used to resolve the project dependencies.
-                             :deps-map (deps-reader/slurp-deps "deps.edn")
+                             :deps-map (deps/slurp-deps "deps.edn")
                              ;; Alias keywords used while resolving the project resources and its dependencies. Default to no alias.
                              :aliases [:1.7 :bench :test]
                              ;; The dependencies to be excluded from the produced bundle.
@@ -137,7 +137,7 @@
     ;; Extract native dependencies (.so, .dylib, .dll, .a, .lib, .scx files) from jar dependencies.
     (bundle/extract-native-dependencies out-path
                                         {;; A map with the same format than deps.edn. :deps-map is used to resolve the project dependencies.
-                                         :deps-map (deps-reader/slurp-deps "deps.edn")
+                                         :deps-map (deps/slurp-deps "deps.edn")
                                          ;; Alias keywords used while resolving dependencies. Default to no alias.
                                          :aliases [:1.7 :bench :test]
                                          ;; Set to true to allow local dependencies and snapshot versions of maven dependencies.
@@ -204,7 +204,7 @@
                                  :direct-linking true}
 
               ;; A map with the same format than deps.edn. :deps-map is used to resolve the project dependencies.
-              :deps-map (deps-reader/slurp-deps "deps.edn")
+              :deps-map (deps/slurp-deps "deps.edn")
               ;; Alias keywords used while resolving dependencies. Default to no alias.
               :aliases [:1.7 :bench :test]
               ;; The dependencies to be excluded from the produced bundle.
@@ -241,7 +241,7 @@
         out-path (badigeon.bundle/make-out-path 'badigeon/badigeon "0.0.1-SNAPSHOT")]
     (uberjar/bundle out-path
                     {;; A map with the same format than deps.edn. :deps-map is used to resolve the project resources.
-                     :deps-map (deps-reader/slurp-deps "deps.edn")
+                     :deps-map (deps/slurp-deps "deps.edn")
                      ;; Alias keywords used while resolving the project resources and its dependencies. Default to no alias.
                      :aliases [:1.7 :bench :test]
                      ;; The dependencies to be excluded from the produced bundle.
@@ -259,11 +259,11 @@
     (spit (str (badigeon.utils/make-path out-path "META-INF/MANIFEST.MF"))
           (jar/make-manifest 'badigeon.main))
     ;; Return the paths of all the resource conflicts (multiple resources with the same path) found on the classpath.
-    (uberjar/find-resource-conflicts {:deps-map (deps-reader/slurp-deps "deps.edn")
+    (uberjar/find-resource-conflicts {:deps-map (deps/slurp-deps "deps.edn")
                                       ;; Alias keywords used while resolving the project resources and its dependencies. Default to no alias.
                                       :aliases [:1.7 :bench :test]})
     ;; Merge the resource conflicts (multiple resources with the same path) found on the classpath and handled by the provided \"resource-mergers\"
-    (uberjar/merge-resource-conflicts out-path {:deps-map (deps-reader/slurp-deps "deps.edn")
+    (uberjar/merge-resource-conflicts out-path {:deps-map (deps/slurp-deps "deps.edn")
                                                 ;; Alias keywords used while resolving the project resources and its dependencies. Default to no alias.
                                                 :aliases [:1.7 :bench :test]
                                                 :resource-mergers uberjar/default-resource-mergers})

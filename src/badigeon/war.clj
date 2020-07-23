@@ -1,7 +1,6 @@
 (ns badigeon.war
   (:require [clojure.data.xml :as xml]
             [clojure.tools.deps.alpha :as deps]
-            [clojure.tools.deps.alpha.reader :as deps-reader]
             [clojure.tools.deps.alpha.util.maven :as maven]
             [badigeon.utils :as utils]
             [badigeon.bundle :as bundle]
@@ -91,7 +90,7 @@
           servlet-version "2.5"
           url-pattern "/*"}
      :as opts}]
-   (let [deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
+   (let [deps-map (or deps-map (deps/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
          args-map (deps/combine-aliases deps-map aliases)
          resolved-deps (deps/resolve-deps deps-map args-map)
@@ -143,7 +142,7 @@
                                        allow-unstable-deps?
 
                                        manifest
-                                       
+
                                        servlet-version
                                        servlet-name
                                        servlet-class
@@ -163,5 +162,5 @@
     (badigeon.clean/clean out-path)
     (war out-path
          'badigeon.main
-         {:deps-map (deps-reader/slurp-deps "deps.edn")}))
+         {:deps-map (deps/slurp-deps "deps.edn")}))
   )

@@ -1,6 +1,5 @@
 (ns badigeon.bundle
   (:require [clojure.tools.deps.alpha :as deps]
-            [clojure.tools.deps.alpha.reader :as deps-reader]
             [clojure.java.io :as io]
             [badigeon.utils :as utils]
             [clojure.string :as string]
@@ -194,7 +193,7 @@
                      excluded-libs
                      allow-unstable-deps?
                      libs-path]}]
-   (let [deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
+   (let [deps-map (or deps-map (deps/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
          args-map (deps/combine-aliases deps-map aliases)
          resolved-deps (deps/resolve-deps deps-map args-map)
@@ -422,7 +421,7 @@
   (utils/make-out-path "badigeon" {:mvn/version utils/version :classifier "rrr"})
 
   (let [out-path (make-out-path 'badigeon/badigeon utils/version)
-        deps-map (assoc (deps-reader/slurp-deps "deps.edn") :paths ["target/classes"])]
+        deps-map (assoc (deps/slurp-deps "deps.edn") :paths ["target/classes"])]
     (badigeon.clean/clean out-path)
     (badigeon.clean/clean "target/classes")
     #_(badigeon.compile/compile 'badigeon.main

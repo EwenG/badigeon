@@ -2,7 +2,6 @@
   (:require [badigeon.classpath :as classpath]
             [clojure.java.io :as io]
             [clojure.tools.deps.alpha :as deps]
-            [clojure.tools.deps.alpha.reader :as deps-reader]
             [badigeon.utils :as utils])
   (:refer-clojure :exclude [compile])
   (:import [java.nio.file Path Paths Files]
@@ -79,7 +78,7 @@
                         Object [(into-array String ["--eval" in-script])]))))
          compile-exception (atom nil)
          ]
-     (.setUncaughtExceptionHandler 
+     (.setUncaughtExceptionHandler
        t (reify Thread$UncaughtExceptionHandler
            (^void uncaughtException  [_ ^Thread t ^Throwable e] (reset! compile-exception e))))
      (.start t)
@@ -123,7 +122,7 @@
          out-path (if (string? out-path)
                     (utils/make-path out-path)
                     out-path)
-         deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
+         deps-map (or deps-map (deps/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
          args-map (deps/combine-aliases deps-map aliases)
          resolved-deps (deps/resolve-deps deps-map args-map)]
@@ -137,16 +136,16 @@
      out-path)))
 
 (comment
-  
+
   (compile '[badigeon.main] {:compile-path "target/classes"
                              :compiler-options {:elide-meta [:doc :file :line :added]}})
 
   (do
     (badigeon.clean/clean "target/classes")
     (extract-classes-from-dependencies
-     {:deps-map (assoc (deps-reader/slurp-deps "deps.edn") :deps '{org.clojure/clojure {:mvn/version "1.9.0"}})
+     {:deps-map (assoc (deps/slurp-deps "deps.edn") :deps '{org.clojure/clojure {:mvn/version "1.9.0"}})
       :excluded-libs #{'org.clojure/clojure}}))
-  
+
   )
 
 ;; Cleaning non project classes: https://dev.clojure.org/jira/browse/CLJ-322
@@ -155,4 +154,4 @@
 ;; Most of the time, libraries should be shipped without AOT. In the rare case when a library must be shipped AOT (let's say we don't want to ship the sources), directories can be removed programmatically, between build tasks. Shipping an application with AOT is a more common use case. In this case, AOT compiling dependencies is not an issue.
 
 ;; Compiling is done in a separate classloader because
-;; - clojure.core/compile recursively compiles a namespace and its dependencies, unless the dependencies are already loaded. :reload-all does not help. Removing the AOT compiled files and recompiling results in a strange result: Source files are not reloaded, no .class file is produced. Using a separate classloader simulates a :reload-all for compile. 
+;; - clojure.core/compile recursively compiles a namespace and its dependencies, unless the dependencies are already loaded. :reload-all does not help. Removing the AOT compiled files and recompiling results in a strange result: Source files are not reloaded, no .class file is produced. Using a separate classloader simulates a :reload-all for compile.

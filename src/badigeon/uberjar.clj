@@ -1,6 +1,5 @@
 (ns badigeon.uberjar
   (:require [clojure.tools.deps.alpha :as deps]
-            [clojure.tools.deps.alpha.reader :as deps-reader]
             [badigeon.bundle :as bundle]
             [badigeon.utils :as utils]
             [clojure.java.io :as io])
@@ -79,7 +78,7 @@
   ([]
    (find-resource-conflicts* nil))
   ([{:keys [deps-map aliases]}]
-   (let [deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
+   (let [deps-map (or deps-map (deps/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
          args-map (deps/combine-aliases deps-map aliases)
          resolved-deps (deps/resolve-deps deps-map args-map)]
@@ -197,7 +196,7 @@
                      allow-unstable-deps?
                      warn-on-resource-conflicts?]
               :or {warn-on-resource-conflicts? true}}]
-   (let [deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
+   (let [deps-map (or deps-map (deps/slurp-deps "deps.edn"))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
          args-map (deps/combine-aliases deps-map aliases)
          resolved-deps (deps/resolve-deps deps-map args-map)
@@ -300,14 +299,14 @@
 
 (comment
   (merge-resource-conflicts (make-out-path 'badigeon utils/version))
-  
+
   (find-resource-conflicts
-   {:deps-map (deps-reader/slurp-deps "deps.edn") :aliases [:doc]})
-  
+   {:deps-map (deps/slurp-deps "deps.edn") :aliases [:doc]})
+
   (let [out-path (make-out-path 'badigeon utils/version)]
     (badigeon.clean/clean out-path)
     (bundle out-path
-            {:deps-map (deps-reader/slurp-deps "deps.edn")
+            {:deps-map (deps/slurp-deps "deps.edn")
              :excluded-libs #{'org.clojure/clojure}
              :allow-unstable-deps? true
              :warn-on-resource-conflicts? true}))
