@@ -15,8 +15,9 @@
             [badigeon.jlink :as jlink]
             [badigeon.war :as war]
             [badigeon.exec :as exec]
-            [clojure.tools.deps.alpha.reader :as deps-reader]
-            [clojure.tools.deps.alpha.util.maven :as maven]))
+            [clojure.tools.deps.alpha :as deps]
+            [clojure.tools.deps.alpha.util.maven :as maven]
+            [clojure.java.io :as io]))
 
 (defn -main []
   ;; Delete the target directory
@@ -56,7 +57,7 @@
    {;; Copy class files to the target/classes directory
     :out-path "target/classes"
     ;; A map with the same format than a deps.edn map. The dependencies with a jar format resolved from this map are searched for \".class\" files
-    :deps-map (deps-reader/slurp-deps "deps.edn")
+    :deps-map (deps/slurp-deps (io/file "deps.edn"))
     ;; Alias keywords used while resolving dependencies. Default to no alias.
     :aliases [:1.7 :bench :test]
     ;; The dependencies to be excluded from the search for class files
@@ -125,7 +126,7 @@
         out-path (badigeon.bundle/make-out-path 'badigeon/badigeon "0.0.1-SNAPSHOT")]
     (badigeon.bundle/bundle out-path
                             {;; A map with the same format than deps.edn. :deps-map is used to resolve the project dependencies.
-                             :deps-map (deps-reader/slurp-deps "deps.edn")
+                             :deps-map (deps/slurp-deps (io/file "deps.edn"))
                              ;; Alias keywords used while resolving the project resources and its dependencies. Default to no alias.
                              :aliases [:1.7 :bench :test]
                              ;; The dependencies to be excluded from the produced bundle.
@@ -137,7 +138,7 @@
     ;; Extract native dependencies (.so, .dylib, .dll, .a, .lib, .scx files) from jar dependencies.
     (bundle/extract-native-dependencies out-path
                                         {;; A map with the same format than deps.edn. :deps-map is used to resolve the project dependencies.
-                                         :deps-map (deps-reader/slurp-deps "deps.edn")
+                                         :deps-map (deps/slurp-deps (io/file "deps.edn"))
                                          ;; Alias keywords used while resolving dependencies. Default to no alias.
                                          :aliases [:1.7 :bench :test]
                                          ;; Set to true to allow local dependencies and snapshot versions of maven dependencies.
@@ -204,7 +205,7 @@
                                  :direct-linking true}
 
               ;; A map with the same format than deps.edn. :deps-map is used to resolve the project dependencies.
-              :deps-map (deps-reader/slurp-deps "deps.edn")
+              :deps-map (deps/slurp-deps (io/file "deps.edn"))
               ;; Alias keywords used while resolving dependencies. Default to no alias.
               :aliases [:1.7 :bench :test]
               ;; The dependencies to be excluded from the produced bundle.
@@ -241,7 +242,7 @@
         out-path (badigeon.bundle/make-out-path 'badigeon/badigeon "0.0.1-SNAPSHOT")]
     (uberjar/bundle out-path
                     {;; A map with the same format than deps.edn. :deps-map is used to resolve the project resources.
-                     :deps-map (deps-reader/slurp-deps "deps.edn")
+                     :deps-map (deps/slurp-deps (io/file "deps.edn"))
                      ;; Alias keywords used while resolving the project resources and its dependencies. Default to no alias.
                      :aliases [:1.7 :bench :test]
                      ;; The dependencies to be excluded from the produced bundle.
@@ -259,11 +260,11 @@
     (spit (str (badigeon.utils/make-path out-path "META-INF/MANIFEST.MF"))
           (jar/make-manifest 'badigeon.main))
     ;; Return the paths of all the resource conflicts (multiple resources with the same path) found on the classpath.
-    (uberjar/find-resource-conflicts {:deps-map (deps-reader/slurp-deps "deps.edn")
+    (uberjar/find-resource-conflicts {:deps-map (deps/slurp-deps (io/file "deps.edn"))
                                       ;; Alias keywords used while resolving the project resources and its dependencies. Default to no alias.
                                       :aliases [:1.7 :bench :test]})
     ;; Merge the resource conflicts (multiple resources with the same path) found on the classpath and handled by the provided \"resource-mergers\"
-    (uberjar/merge-resource-conflicts out-path {:deps-map (deps-reader/slurp-deps "deps.edn")
+    (uberjar/merge-resource-conflicts out-path {:deps-map (deps/slurp-deps (io/file "deps.edn"))
                                                 ;; Alias keywords used while resolving the project resources and its dependencies. Default to no alias.
                                                 :aliases [:1.7 :bench :test]
                                                 :resource-mergers uberjar/default-resource-mergers})

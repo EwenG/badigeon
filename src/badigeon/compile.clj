@@ -2,7 +2,6 @@
   (:require [badigeon.classpath :as classpath]
             [clojure.java.io :as io]
             [clojure.tools.deps.alpha :as deps]
-            [clojure.tools.deps.alpha.reader :as deps-reader]
             [badigeon.utils :as utils])
   (:refer-clojure :exclude [compile])
   (:import [java.nio.file Path Paths Files]
@@ -123,7 +122,7 @@
          out-path (if (string? out-path)
                     (utils/make-path out-path)
                     out-path)
-         deps-map (or deps-map (deps-reader/slurp-deps "deps.edn"))
+         deps-map (or deps-map (deps/slurp-deps (io/file "deps.edn")))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
          args-map (deps/combine-aliases deps-map aliases)
          resolved-deps (deps/resolve-deps deps-map args-map)]
@@ -144,7 +143,7 @@
   (do
     (badigeon.clean/clean "target/classes")
     (extract-classes-from-dependencies
-     {:deps-map (assoc (deps-reader/slurp-deps "deps.edn") :deps '{org.clojure/clojure {:mvn/version "1.9.0"}})
+     {:deps-map (assoc (deps/slurp-deps (io/file "deps.edn")) :deps '{org.clojure/clojure {:mvn/version "1.9.0"}})
       :excluded-libs #{'org.clojure/clojure}}))
   
   )

@@ -1,5 +1,5 @@
 (ns badigeon.jar
-  (:require [clojure.tools.deps.alpha.reader :as deps-reader]
+  (:require [clojure.tools.deps.alpha :as deps]
             [badigeon.pom :as pom]
             [badigeon.utils :as utils]
             [clojure.string :as string]
@@ -204,7 +204,7 @@
                     {})
          ;; Do not merge system and user wide deps.edn files
          deps-map (or deps-map
-                      (-> (deps-reader/slurp-deps "deps.edn")
+                      (-> (deps/slurp-deps (io/file "deps.edn"))
                           ;; Replositories must be explicilty provided as parameters
                           (dissoc :mvn/repos)
                           (merge (select-keys options [:paths :deps :mvn/repos]))))
