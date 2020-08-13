@@ -30,6 +30,11 @@ badigeon/badigeon {:mvn/version "1.0"}
 
 [Sample file](https://github.com/EwenG/badigeon/blob/master/sample/badigeon/sample.clj)
 
+
+# Example projects
+
+[badigeon-hello-world](https://github.com/EwenG/badigeon-hello-world)
+
 ---
 
 ## License
