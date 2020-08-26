@@ -12,7 +12,7 @@
         artifacts [{:file-path jar-path}
                    {:file-path "pom.xml"}]
         artifacts (sign/sign artifacts)
-        password (prompt/prompt-password "Password: ")
+        #_password #_(prompt/prompt-password "Password: ")
         deploy-token (slurp "deploy_token.txt")]
     (deploy/deploy
      'badigeon/badigeon badigeon.utils/version
