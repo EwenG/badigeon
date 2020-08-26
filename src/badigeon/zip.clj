@@ -1,27 +1,21 @@
 (ns badigeon.zip
   (:require [badigeon.utils :as utils])
-  (:import [java.util.zip ZipOutputStream ZipEntry]
+  (:import [java.util.zip ZipOutputStream]
            [java.nio.file Path Paths
             Files FileVisitor FileVisitResult FileSystemLoopException
             FileVisitOption NoSuchFileException]
            [java.io BufferedOutputStream FileOutputStream]
            [java.util EnumSet]))
 
-(defn make-file-visitor [^Path root-path ^ZipOutputStream zip-out]
+(defn make-file-visitor [root-path zip-out]
   (reify FileVisitor
     (postVisitDirectory [_ dir exception]
       FileVisitResult/CONTINUE)
     (preVisitDirectory [_ dir attrs]
+      (utils/put-zip-entry! zip-out root-path dir)
       FileVisitResult/CONTINUE)
     (visitFile [_ path attrs]
-      (let [zip-entry (-> (utils/relativize-path root-path path)
-                          str
-                          (.replace (System/getProperty "file.separator") "/")
-                          (ZipEntry.))]
-        (.setTime zip-entry (.lastModified (.toFile ^Path path)))
-        (.putNextEntry zip-out zip-entry)
-        (Files/copy path zip-out)
-        (.closeEntry zip-out))
+      (utils/put-zip-entry! zip-out root-path path)
       FileVisitResult/CONTINUE)
     (visitFileFailed [_ file exception]
       (cond (instance? FileSystemLoopException exception)

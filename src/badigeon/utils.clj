@@ -1,6 +1,9 @@
 (ns badigeon.utils
-  (:require [clojure.tools.deps.alpha.util.maven :as maven])
-  (:import [java.nio.file Paths Path StandardCopyOption]))
+  (:require [clojure.tools.deps.alpha.util.maven :as maven]
+            [clojure.java.io :as io])
+  (:import [java.nio.file Paths Path StandardCopyOption]
+           [java.util.jar JarEntry JarOutputStream]
+           [java.util.zip ZipEntry ZipOutputStream]))
 
 (def ^:const version "1.1-SNAPSHOT")
 
@@ -79,3 +82,21 @@
                               entry-split-index)
           jar-file-path (.substring jar-file-path 0 entry-split-index)]
       jar-file-path)))
+
+(defn put-zip-entry!
+  [^ZipOutputStream zip-out ^Path root-path ^Path path]
+  (when (not (.equals root-path path))
+    (let [f (.toFile path)
+          relative-path (str (relativize-path root-path path))
+          relative-path (.replace relative-path (System/getProperty "file.separator") "/")
+          relative-path (if (.isDirectory f)
+                          (str relative-path "/")
+                          (str relative-path))
+          ^ZipEntry entry (if (instance? JarOutputStream zip-out)
+                            (JarEntry. relative-path)
+                            (ZipEntry. relative-path))]
+      (.setTime entry (.lastModified f))
+      (.putNextEntry zip-out entry)
+      (when-not (.isDirectory f)
+        (io/copy f zip-out))
+      (.closeEntry zip-out))))

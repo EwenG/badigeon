@@ -3,11 +3,11 @@
             [badigeon.pom :as pom]
             [badigeon.utils :as utils]
             [clojure.string :as string]
-            [clojure.java.io :as io]
-            [clojure.tools.deps.alpha.util.maven :as maven])
+            [clojure.tools.deps.alpha.util.maven :as maven]
+            [clojure.java.io :as io])
   (:import [java.nio.file Path Paths Files]
            [java.util EnumSet]
-           [java.util.jar Manifest JarEntry JarOutputStream]
+           [java.util.jar Manifest JarOutputStream JarEntry]
            [java.nio.file FileVisitor FileVisitResult FileSystemLoopException
             FileVisitOption NoSuchFileException]
            [java.io File BufferedOutputStream FileOutputStream ByteArrayInputStream]))
@@ -101,22 +101,10 @@
       (readme-path group-id artifact-id root-files path)
       (license-path group-id artifact-id root-files path)))
 
-(defn- put-jar-entry!
-  "Adds a jar entry to the Jar output stream."
-  [^JarOutputStream jar-out ^File file path]
-  (.putNextEntry jar-out (doto (JarEntry. (str path))
-                           (.setTime (.lastModified file))))
-  (when-not (.isDirectory file)
-    (io/copy file jar-out)))
-
-(defn- path-file-visitor [jar-out exclusion-predicate root-path ^Path path attrs]
-  (let [file-name (.getFileName path)]
-    (when (and (not= root-path path)
-               (not (when exclusion-predicate (exclusion-predicate root-path path))))
-      (let [f (.toFile path)
-            relative-path (str (utils/relativize-path root-path path))
-            relative-path (.replace relative-path (System/getProperty "file.separator") "/")]
-        (put-jar-entry! jar-out f relative-path)))))
+(defn- path-file-visitor [jar-out exclusion-predicate root-path path attrs]
+  (when (and (not= root-path path)
+             (not (when exclusion-predicate (exclusion-predicate root-path path))))
+    (utils/put-zip-entry! jar-out root-path path)))
 
 (defn- inclusion-path-visitor [^JarOutputStream jar-out pred root-path ^Path path attrs]
   (when-let [file-name (when pred (pred root-path path))]
@@ -132,11 +120,13 @@
     (.putNextEntry jar-out (JarEntry. path))
     (io/copy pom-properties jar-out)))
 
-(defn- make-file-visitor [jar-out pred root-path visitor-fn]
+(defn- make-file-visitor [jar-out pred root-path add-directories? visitor-fn]
   (reify FileVisitor
     (postVisitDirectory [_ dir exception]
       FileVisitResult/CONTINUE)
     (preVisitDirectory [_ dir attrs]
+      (when add-directories?
+        (utils/put-zip-entry! jar-out root-path dir))
       FileVisitResult/CONTINUE)
     (visitFile [_ path attrs]
       (visitor-fn jar-out pred root-path path attrs)
@@ -225,7 +215,7 @@
                            (EnumSet/of FileVisitOption/FOLLOW_LINKS)
                            Integer/MAX_VALUE
                            (make-file-visitor
-                            jar-out inclusion-path root-path
+                            jar-out inclusion-path root-path false
                             inclusion-path-visitor))
        (doseq [path (:paths deps-map)]
          (Files/walkFileTree (.resolve root-path ^String path)
@@ -233,7 +223,7 @@
                              Integer/MAX_VALUE
                              (make-file-visitor
                               jar-out exclusion-predicate
-                              (.resolve root-path ^String path)
+                              (.resolve root-path ^String path) true
                               path-file-visitor)))
        (copy-pom-properties jar-out group-id artifact-id pom-properties))
      (str out-path))))

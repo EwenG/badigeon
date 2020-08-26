@@ -1,3 +1,10 @@
+# 1.1
+
+- Update to tools.deps.alpha version 0.9.763
+- Add the directories found on the classpath as jar entries when creating jars
+- Add directories as zip entries when creating zips
+- Fix a potential exception when using badigeon.uberjar/merge-resource-conficts 
+
 # 1.0
 
 - Bugfix: Fix the path of jar entries copied from resources when building on windows
