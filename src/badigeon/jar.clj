@@ -120,13 +120,23 @@
     (.putNextEntry jar-out (JarEntry. path))
     (io/copy pom-properties jar-out)))
 
+;; The java zip API does not allow duplicate entries.
+;; This var holds the names of the already added directory entries
+;; to avoid trying to add multiple zip entries with the same name.
+;; This can happen when we are bundling resources from multiple paths
+;; that contain directories with the same names.
+(def ^{:private true :dynamic true} *directory-entries* nil)
+
 (defn- make-file-visitor [jar-out pred root-path add-directories? visitor-fn]
   (reify FileVisitor
     (postVisitDirectory [_ dir exception]
       FileVisitResult/CONTINUE)
     (preVisitDirectory [_ dir attrs]
       (when add-directories?
-        (utils/put-zip-entry! jar-out root-path dir))
+        (let [relative-path (str (utils/relativize-path root-path dir))]
+          (when (not (contains? *directory-entries* relative-path))
+            (let [zip-entry (utils/put-zip-entry! jar-out root-path dir)]
+              (set! *directory-entries* (conj *directory-entries* relative-path))))))
       FileVisitResult/CONTINUE)
     (visitFile [_ path attrs]
       (visitor-fn jar-out pred root-path path attrs)
@@ -217,14 +227,15 @@
                            (make-file-visitor
                             jar-out inclusion-path root-path false
                             inclusion-path-visitor))
-       (doseq [path (:paths deps-map)]
-         (Files/walkFileTree (.resolve root-path ^String path)
-                             (EnumSet/of FileVisitOption/FOLLOW_LINKS)
-                             Integer/MAX_VALUE
-                             (make-file-visitor
-                              jar-out exclusion-predicate
-                              (.resolve root-path ^String path) true
-                              path-file-visitor)))
+       (binding [*directory-entries* #{}]
+         (doseq [path (:paths deps-map)]
+           (Files/walkFileTree (.resolve root-path ^String path)
+                               (EnumSet/of FileVisitOption/FOLLOW_LINKS)
+                               Integer/MAX_VALUE
+                               (make-file-visitor
+                                jar-out exclusion-predicate
+                                (.resolve root-path ^String path) true
+                                path-file-visitor))))
        (copy-pom-properties jar-out group-id artifact-id pom-properties))
      (str out-path))))
 
