@@ -1,7 +1,10 @@
-# 1.3
+# 1.4
 
 - Fix duplicate entries exception when building a jar from resources paths that contains multiple directories with the same name
 - tools.deps 0.9.857
+
+# 1.3
+Bad build.
 
 # 1.2
 Bad build.
