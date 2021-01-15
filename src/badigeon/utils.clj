@@ -5,7 +5,7 @@
            [java.util.jar JarEntry JarOutputStream]
            [java.util.zip ZipEntry ZipOutputStream]))
 
-(def ^:const version "1.2")
+(def ^:const version "1.3")
 
 (def ^"[Ljava.nio.file.StandardCopyOption;" copy-options
   (into-array StandardCopyOption
