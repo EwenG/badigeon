@@ -1,5 +1,6 @@
 (ns badigeon-build.deploy
-  (:require [badigeon.jar :as jar]
+  (:require [badigeon.clean :as clean]
+            [badigeon.jar :as jar]
             [badigeon.install :as install]
             [badigeon.utils :as utils]
             [badigeon.sign :as sign]
@@ -7,6 +8,7 @@
             [badigeon.prompt :as prompt]))
 
 (defn -main []
+  (clean/clean "target")
   (let [jar-path (jar/jar 'badigeon/badigeon {:mvn/version badigeon.utils/version}
                           {:paths ["src"]})
         artifacts [{:file-path jar-path}

@@ -1,3 +1,3 @@
 #!/bin/sh
 
-clojure -A:build -m badigeon-build.deploy
+clojure -M:build -m badigeon-build.deploy
