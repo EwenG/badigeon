@@ -1,3 +1,3 @@
 #!/bin/sh
 
-clojure -A:doc -m badigeon.doc
+clojure -M:doc -m badigeon.doc

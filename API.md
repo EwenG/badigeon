@@ -130,14 +130,15 @@ Build a path using a library name and its version number.
 
 ## `badigeon.bundle/bundle`
 
-Arglists: `([out-path] [out-path {:keys [deps-map aliases excluded-libs allow-unstable-deps? libs-path]}])`
+Arglists: `([out-path] [out-path {:keys [deps-map aliases excluded-libs allow-unstable-deps? warn-on-resource-conflicts? libs-path]}])`
 
-Creates a standalone bundle of the project resources and its dependencies. By default jar dependencies are copied in a "lib" folder, under the ouput directory. Other dependencies (local and git) are copied by copying their :paths content to the root of the output directory. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
+Creates a standalone bundle of the project resources and its dependencies. By default jar dependencies are copied in a "lib" folder, under the ouput directory. Other dependencies (local and git) are copied by copying their :paths content to the root of the output directory. Resource conflicts (multiple resources with the same path) are not copied to the output directory. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
   - out-path: The path of the output directory.
   - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repositories.
   - aliases: Alias keywords used while resolving the project resources and its dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
   - allow-unstable-deps?: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
+  - warn-on-resource-conflicts?. A collection of strings or regexps matched against the names of the conflicting resources. Matching resources are excluded from the warnings. Alternatively, this option can be set to false to disable warnings completly. Default to "default-warn-on-resource-conflicts?"
   - libs-path: The path of the folder where dependencies are copied, relative to the output folder. Default to "lib".
 
 ## `badigeon.bundle/extract-native-dependencies`
@@ -174,7 +175,7 @@ Recursively visit all the files of a directory. For each visited file, the funct
 
 Arglists: `([out-path main] [out-path main {:keys [os-type script-path script-header command classpath jvm-opts args]}])`
 
-Write a start script for the bundle under "out-path", using the "main" parameter as the CLojure namespace defining the -main method entry point.
+Write a start script for the bundle under "out-path", using the "main" parameter as the Clojure namespace defining the -main method entry point.
   - os-type: Either the badigeon.bundle.windows-like constant or the badigeon.bundle.posix-like constant, depending on the wanted script type. Default to badigeon.bundle.posix-like .
   - script-path: The output path of the script, relative to the "out-path" parameter. Default to bin/run.sh or bin/run.bat, depending on the os-type .
   - script-header: A string prefixed to the script. Default to "#!/bin/sh
@@ -201,7 +202,7 @@ Creates a directory that contains all the resources from all the dependencies re
   - aliases: Alias keywords used while resolving the project resources and its dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced directory. Only the lib is excluded and not its dependencies.
   - allow-unstable-deps?: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
-  - warn-on-resource-conflicts?. A boolean. When set to true and resource conflicts are found, then a warning is printed to \*err\*.
+  - warn-on-resource-conflicts?. A collection of strings or regexps matched against the names of the conflicting resources. Matching resources are excluded from the warnings. Alternatively, this option can be set to false to disable warnings completly. Default to "default-warn-on-resource-conflicts?"
 
 ## `badigeon.uberjar/find-resource-conflicts`
 

@@ -9,10 +9,14 @@
             FileSystemLoopException NoSuchFileException FileAlreadyExistsException LinkOption]
            [java.nio.file.attribute FileAttribute]
            [java.util.jar JarFile JarEntry]
-           [java.util EnumSet]))
+           [java.util EnumSet]
+           [java.util.regex Pattern]))
 
 (def ^{:dynamic true :private true :tag Path} *out-path* nil)
 (def ^{:dynamic true :private true} *copied-paths* nil)
+
+(def ^{:dynamic true} *resource-paths* nil)
+(def ^{:dynamic true} *resource-conflict-paths* nil)
 
 (defn post-visit-directory [^Path root-path ^Path to dir exception]
   (when-not exception
@@ -38,6 +42,22 @@
         FileVisitResult/SKIP_SUBTREE
         :else (throw exception)))
 
+(defn- copy-file [from to]
+  (let [^Path to (if (string? to)
+                   (utils/make-path to)
+                   to)
+        ^Path from (if (string? from)
+                     (utils/make-path from)
+                     from)
+        relative-path (when (some? *out-path*) (.relativize *out-path* to))]
+    (when (and (some? *copied-paths*) (get *copied-paths* relative-path))
+      (throw (ex-info "Duplicate path" {:from (str from)
+                                        :to (str to)
+                                        :relative-path (str relative-path)})))
+    (when (some? *out-path*)
+      (set! *copied-paths* (conj *copied-paths* relative-path)))
+    (Files/copy from to utils/copy-options)))
+
 (defn- make-directory-file-visitor [^Path root-path ^Path to]
   (reify FileVisitor
     (postVisitDirectory [_ dir exception]
@@ -45,15 +65,10 @@
     (preVisitDirectory [_ dir attrs]
       (pre-visit-directory root-path to dir attrs))
     (visitFile [_ path attrs]
-      (let [new-file (.resolve to (.relativize root-path path))
-            relative-path (when (some? *out-path*) (.relativize *out-path* new-file))]
-        (when (and (some? *copied-paths*) (get *copied-paths* relative-path))
-          (throw (ex-info "Duplicate path" {:from (str path)
-                                            :to (str to)
-                                            :relative-path (str relative-path)})))
-        (when (some? *copied-paths*)
-          (set! *copied-paths* (conj *copied-paths* relative-path)))
-        (Files/copy ^Path path new-file utils/copy-options)
+      (let [resource-path (.relativize root-path path)]
+        (when-not (contains? *resource-conflict-paths* (str resource-path))
+          (let [new-file (.resolve to resource-path)]
+            (copy-file path new-file)))
         FileVisitResult/CONTINUE))
     (visitFileFailed [_ file exception]
       (visit-file-failed file exception))))
@@ -112,31 +127,12 @@
                         Integer/MAX_VALUE
                         (make-directory-file-visitor from to-directory))))
 
-(defn- copy-file [from to]
-  (let [^Path to (if (string? to)
-                   (utils/make-path to)
-                   to)
-        ^Path from (if (string? from)
-                     (utils/make-path from)
-                     from)
-        relative-path (when (some? *out-path*) (.relativize *out-path* to))]
-    (if (and (some? *copied-paths*)
-             (get *copied-paths* relative-path))
-      (throw (ex-info "Duplicate path" {:from (str from)
-                                        :to (str to)
-                                        :relative-path (str relative-path)}))
-      (do
-        (when (some? *out-path*)
-          (set! *copied-paths* (conj *copied-paths* relative-path)))
-        (Files/copy from to utils/copy-options)))))
-
 (defn- copy-dependency
   [{:keys [paths] :as coords} ^Path out-path]
   (doseq [path paths]
     (let [f (io/file path)]
-      (when (.exists f)
-        (when (.isDirectory f)
-          (copy-directory path out-path))))))
+      (when (and (.exists f) (.isDirectory f))
+        (copy-directory path out-path)))))
 
 (defn- ^String copy-dep-make-name [lib {:keys [:mvn/version] :as coords}]
   (str (name lib) "-" version ".jar"))
@@ -155,7 +151,8 @@
 
 (defn- copy-dep-dependency [lib {:keys [paths] :as coords} ^Path out-path ^Path libs-path]
   (doseq [path paths]
-    (let [f (io/file path)]
+    (let [f (io/file path)
+          path (utils/make-path (str path))]
       (when (.exists f)
         (cond (and (not (.isDirectory f)) (.endsWith (str path) ".jar"))
               (let [f-name (copy-dep-make-name lib coords)
@@ -163,8 +160,11 @@
                     ;; The output path may not be unique since we only use the artifact id and the version
                     ;; of dependencies (we do not use the group-id) to generate an output path.
                     ;; In case of a conflict, then we also use the group-id
-                    to (copy-dep-uniquify-path lib coords out-path libs-path to)]
-                (copy-file path to))
+                    to (copy-dep-uniquify-path lib coords out-path libs-path to)
+                    parent-path (.getParent path)
+                    resource-path (when parent-path (.relativize parent-path path))]
+                (when (and resource-path (not (contains? *resource-conflict-paths* (str resource-path))))
+                  (copy-file path to)))
               (.isDirectory f)
               (copy-directory path out-path))))))
 
@@ -178,13 +178,104 @@
 (defn- extra-paths-reducer [aliases extra-paths alias]
   (into extra-paths (get-in aliases [alias :extra-paths])))
 
+(defn- find-resource-conflicts-file [^Path root-path path]
+  (let [resource-path (str (.relativize root-path path))
+        absolute-root-path (.normalize (.toAbsolutePath root-path))]
+    (when-let [previous-absolute-root-path (get *resource-paths* resource-path)]
+      (let [all-root-paths (-> (get *resource-conflict-paths* resource-path)
+                               (conj previous-absolute-root-path
+                                     absolute-root-path)
+                               set)]
+        (when (> (count all-root-paths) 1)
+          (set! *resource-conflict-paths* (assoc *resource-conflict-paths* resource-path
+                                                 all-root-paths)))))
+    (set! *resource-paths* (assoc *resource-paths* resource-path absolute-root-path))))
+
+(defn- make-find-resource-conflicts-directory-file-visitor [root-path]
+  (reify FileVisitor
+    (postVisitDirectory [_ dir exception]
+      FileVisitResult/CONTINUE)
+    (preVisitDirectory [_ dir attrs]
+      FileVisitResult/CONTINUE)
+    (visitFile [_ path attrs]
+      (find-resource-conflicts-file root-path path)
+      FileVisitResult/CONTINUE)
+    (visitFileFailed [_ file exception]
+      (cond (instance? FileSystemLoopException exception)
+            FileVisitResult/SKIP_SUBTREE
+            (instance? NoSuchFileException exception)
+            FileVisitResult/SKIP_SUBTREE
+            :else (throw exception)))))
+
+(defn- find-resource-conflicts-directory [path]
+  (let [path (if (string? path)
+               (utils/make-path path)
+               path)]
+    (Files/walkFileTree path
+                        (EnumSet/of FileVisitOption/FOLLOW_LINKS)
+                        Integer/MAX_VALUE
+                        (make-find-resource-conflicts-directory-file-visitor path))))
+
+(defn- find-resource-conflicts-paths [paths]
+  (doseq [path paths]
+    (let [f (io/file path)]
+      (when (.exists f)
+        (cond (and (not (.isDirectory f)) (.endsWith (str path) ".jar"))
+              (let [path (utils/make-path (str path))
+                    parent-path (.getParent path)]
+                (when parent-path
+                  (find-resource-conflicts-file (.getParent path) path)))
+              (.isDirectory f)
+              (find-resource-conflicts-directory path))))))
+
+(defn- find-resource-conflicts*
+  ([]
+   (find-resource-conflicts* nil))
+  ([{:keys [deps-map aliases]}]
+   (let [deps-map (or deps-map (deps/slurp-deps (io/file "deps.edn")))
+         deps-map (update deps-map :mvn/repos utils/with-standard-repos)
+         args-map (deps/combine-aliases deps-map aliases)
+         resolved-deps (deps/resolve-deps deps-map args-map)]
+     (binding [*resource-paths* {}
+               *resource-conflict-paths* {}]
+       (doseq [[lib {:keys [paths] :as coords}] resolved-deps]
+         (find-resource-conflicts-paths paths))
+       (let [extra-paths (reduce (partial extra-paths-reducer (:aliases deps-map))
+                                 [] aliases)
+             all-paths (-> extra-paths
+                           (concat (:paths deps-map))
+                           distinct)]
+         (find-resource-conflicts-paths all-paths))
+       *resource-conflict-paths*))))
+
+(defn- match-resource-conflict? [k string-or-regexp]
+  (or
+   (and (string? string-or-regexp) (= string-or-regexp k))
+   (and (instance? Pattern string-or-regexp) (re-matches string-or-regexp k))))
+
+(defn- resource-conflicts-reducer
+  [warn-on-resource-conflicts? resource-conflicts k v]
+  (cond (or (sequential? warn-on-resource-conflicts?)
+            (set? warn-on-resource-conflicts?))
+        (if (some (partial match-resource-conflict? (str k))
+                  (seq warn-on-resource-conflicts?))
+          resource-conflicts
+          (assoc resource-conflicts k v))
+        warn-on-resource-conflicts?
+        (assoc resource-conflicts k v)
+        :else
+        resource-conflicts))
+
+(def default-warn-on-resource-conflicts-exclusions [#".*\.DS_Store$" #".*/\.DS_Store$"])
+
 (defn bundle
-  "Creates a standalone bundle of the project resources and its dependencies. By default jar dependencies are copied in a \"lib\" folder, under the ouput directory. Other dependencies (local and git) are copied by copying their :paths content to the root of the output directory. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
+  "Creates a standalone bundle of the project resources and its dependencies. By default jar dependencies are copied in a \"lib\" folder, under the ouput directory. Other dependencies (local and git) are copied by copying their :paths content to the root of the output directory. Resource conflicts (multiple resources with the same path) are not copied to the output directory. By default, an exception is thrown when the project dependends on a local dependency or a SNAPSHOT version of a dependency.
   - out-path: The path of the output directory.
   - deps-map: A map with the same format than a deps.edn map. The dependencies of the project are resolved from this map in order to be copied to the output directory. Default to the deps.edn map of the project (without merging the system-level and user-level deps.edn maps), with the addition of the maven central and clojars repositories.
   - aliases: Alias keywords used while resolving the project resources and its dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
   - allow-unstable-deps?: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
+  - warn-on-resource-conflicts?. A collection of strings or regexps matched against the names of the conflicting resources. Matching resources are excluded from the warnings. Alternatively, this option can be set to false to disable warnings completly. Default to \"default-warn-on-resource-conflicts?\"
   - libs-path: The path of the folder where dependencies are copied, relative to the output folder. Default to \"lib\"."
   ([out-path]
    (bundle out-path nil))
@@ -192,7 +283,9 @@
                      aliases
                      excluded-libs
                      allow-unstable-deps?
-                     libs-path]}]
+                     warn-on-resource-conflicts?
+                     libs-path]
+              :or {warn-on-resource-conflicts? default-warn-on-resource-conflicts-exclusions}}]
    (let [deps-map (or deps-map (deps/slurp-deps (io/file "deps.edn")))
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
          args-map (deps/combine-aliases deps-map aliases)
@@ -208,17 +301,29 @@
      (when-not allow-unstable-deps?
        (utils/check-for-unstable-deps #(or (utils/snapshot-dep? %) (utils/local-dep? %)) resolved-deps))
      (Files/createDirectories (.resolve out-path libs-path) (make-array FileAttribute 0))
-     (binding [*out-path* out-path
-               *copied-paths* #{}]
-       (doseq [[lib coords] resolved-deps]
-         (when-not (contains? excluded-libs lib)
-           (copy-dep-dependency lib coords out-path libs-path)))
-       (let [extra-paths (reduce (partial extra-paths-reducer (:aliases deps-map))
-                                 [] aliases)
-             all-paths (-> extra-paths
-                           (concat (:paths deps-map))
-                           distinct)]
-         (copy-dependency {:paths all-paths} out-path)))
+     (let [resource-conflict-paths (find-resource-conflicts* {:deps-map deps-map
+                                                              :aliases aliases})
+           resource-conflict-paths-warnings (reduce-kv (partial
+                                                        resource-conflicts-reducer
+                                                        warn-on-resource-conflicts?)
+                                                       {} resource-conflict-paths)]
+       (when (seq resource-conflict-paths-warnings)
+         (binding [*out* *err*]
+           (println (str "Warning: Resource conflicts found: "
+                         (pr-str (keys resource-conflict-paths-warnings))))))
+       (def conf-p resource-conflict-paths)
+       (binding [*out-path* out-path
+                 *copied-paths* #{}
+                 *resource-conflict-paths* resource-conflict-paths]
+         (doseq [[lib coords] resolved-deps]
+           (when-not (contains? excluded-libs lib)
+             (copy-dep-dependency lib coords out-path libs-path)))
+         (let [extra-paths (reduce (partial extra-paths-reducer (:aliases deps-map))
+                                   [] aliases)
+               all-paths (-> extra-paths
+                             (concat (:paths deps-map))
+                             distinct)]
+           (copy-dependency {:paths all-paths} out-path))))
      out-path)))
 
 (defn extract-native-dependencies
@@ -365,7 +470,7 @@
       formatted)))
 
 (defn bin-script
-  "Write a start script for the bundle under \"out-path\", using the \"main\" parameter as the CLojure namespace defining the -main method entry point.
+  "Write a start script for the bundle under \"out-path\", using the \"main\" parameter as the Clojure namespace defining the -main method entry point.
   - os-type: Either the badigeon.bundle.windows-like constant or the badigeon.bundle.posix-like constant, depending on the wanted script type. Default to badigeon.bundle.posix-like .
   - script-path: The output path of the script, relative to the \"out-path\" parameter. Default to bin/run.sh or bin/run.bat, depending on the os-type .
   - script-header: A string prefixed to the script. Default to \"#!/bin/sh\n\" or \"@echo off\r\n\", depending on the os-type.
@@ -424,11 +529,11 @@
         deps-map (assoc (deps/slurp-deps (io/file "deps.edn")) :paths ["target/classes"])]
     (badigeon.clean/clean out-path)
     (badigeon.clean/clean "target/classes")
-    #_(badigeon.compile/compile 'badigeon.main
+    (badigeon.compile/compile 'badigeon.main
                               {:compiler-options {:elide-meta [:doc :file :line :added]
                                                   :direct-linking true}})
     (bundle out-path {:deps-map deps-map
-                        :allow-unstable-deps? true})
+                      :allow-unstable-deps? true})
     ;; overtone/scsynth {:mvn/version "3.10.2"}
     #_(extract-native-dependencies out-path {:deps-map deps-map
                                              :allow-unstable-deps? true

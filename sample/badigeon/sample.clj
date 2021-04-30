@@ -133,6 +133,9 @@
                              :excluded-libs #{'org.clojure/clojure}
                              ;; Set to true to allow local dependencies and snapshot versions of maven dependencies.
                              :allow-unstable-deps? true
+                             ;; When resource conflicts are found, then a warning is printed to *err*, unless the resource
+                             ;; matches one of the value in the provided collection
+                             :warn-on-resource-conflicts? bundle/default-warn-on-resource-conflicts-exclusions
                              ;; The path of the folder where dependencies are copied, relative to the output folder.
                              :libs-path "lib"})
     ;; Extract native dependencies (.so, .dylib, .dll, .a, .lib, .scx files) from jar dependencies.
@@ -249,8 +252,9 @@
                      :excluded-libs #{'org.clojure/clojure}
                      ;; Set to true to allow local dependencies and snapshot versions of maven dependencies.
                      :allow-unstable-deps? true
-                     ;; When set to true and resource conflicts are found, then a warning is printed to *err*
-                     :warn-on-resource-conflicts? true})
+                     ;; When resource conflicts are found, then a warning is printed to *err*, unless the resource
+                     ;; matches one of the value in the provided collection
+                     :warn-on-resource-conflicts? uberjar/default-warn-on-resource-conflicts-exclusions})
     ;; Recursively walk the bundle files and delete all the Clojure source files
     (uberjar/walk-directory
      out-path
