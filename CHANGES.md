@@ -1,3 +1,7 @@
+# 1.5
+
+- Update to tools.deps.alpha version 0.11.910
+
 # 1.4
 
 - Fix duplicate entries exception when building a jar from resources paths that contains multiple directories with the same name
