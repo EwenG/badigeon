@@ -1,5 +1,7 @@
 # 1.5
 
+- Add a warn-on-resource-conflicts? option to badigeon.bundle/bundle
+- Modify the warn-on-resource-conflicts? option to take a collection of strings/regexps to exclude from the warnings
 - Update to tools.deps.alpha version 0.11.910
 
 # 1.4
