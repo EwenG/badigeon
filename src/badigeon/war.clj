@@ -60,6 +60,7 @@
   - aliases: Alias keywords used while resolving dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
   - allow-unstable-deps?: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
+  - warn-on-resource-conflicts?. A collection of strings or regexps matched against the names of the conflicting resources. Matching resources are excluded from the warnings. Alternatively, this option can be set to false to disable warnings completly. Default to \"default-warn-on-resource-conflicts?\"
   - manifest: A map of additionel entries to the war manifest. Values of the manifest map can be maps to represent manifest sections. By default, the war manifest contains the \"Created-by\", \"Built-By\" and \"Build-Jdk\" entries.
   - servlet-version: The version of the servlet spec that we claim to conform to. Attributes corresponding to this version will be added to the web-app element of the web.xml. If not specified, defaults to 2.5.
   - servlet-name: The name of the servlet (in web.xml). Defaults to the servlet-namespace name.
@@ -76,6 +77,7 @@
             aliases
             excluded-libs
             allow-unstable-deps?
+            warn-on-resource-conflicts?
 
             manifest
 
@@ -86,7 +88,8 @@
 
             listener-namespace
             listener-class]
-     :or {servlet-class (namespace-munge servlet-namespace)
+     :or {warn-on-resource-conflicts? bundle/default-warn-on-resource-conflicts-exclusions
+          servlet-class (namespace-munge servlet-namespace)
           servlet-name (str servlet-namespace)
           servlet-version "2.5"
           url-pattern "/*"}
@@ -124,11 +127,22 @@
        (compile/compile listener-namespace
                         {:compile-path (str (.resolve out-path "WEB-INF/classes"))
                          :compiler-options compiler-options}))
-     (binding [bundle/*out-path* out-path
-               bundle/*copied-paths* #{}]
-       (doseq [[lib coords] resolved-deps]
-         (when-not (contains? excluded-libs lib)
-           (#'bundle/copy-dep-dependency lib coords out-path libs-path))))
+     (let [resource-conflict-paths (#'bundle/find-resource-conflicts* {:deps-map deps-map
+                                                                       :aliases aliases})
+           resource-conflict-paths-warnings (reduce-kv (partial
+                                                        #'bundle/resource-conflicts-reducer
+                                                        warn-on-resource-conflicts?)
+                                                       {} resource-conflict-paths)]
+       (when (seq resource-conflict-paths-warnings)
+         (binding [*out* *err*]
+           (println (str "Warning: Resource conflicts found: "
+                         (pr-str (keys resource-conflict-paths-warnings))))))
+       (let [copied-paths (volatile! #{})]
+         (doseq [[lib coords] resolved-deps]
+           (when-not (contains? excluded-libs lib)
+             (#'bundle/copy-dep-dependency
+              copied-paths resource-conflict-paths
+              lib coords out-path libs-path)))))
      out-path)))
 
 (defn war
@@ -163,5 +177,6 @@
     (badigeon.clean/clean out-path)
     (war out-path
          'badigeon.main
-         {:deps-map (deps/slurp-deps (io/file "deps.edn"))}))
+         {:allow-unstable-deps? true
+          :deps-map (deps/slurp-deps (io/file "deps.edn"))}))
   )

@@ -253,7 +253,7 @@ Build a path using a library name and its version number.
 
 ## `badigeon.war/war-exploded`
 
-Arglists: `([out-path servlet-namespace] [out-path servlet-namespace {:keys [compiler-options deps-map aliases excluded-libs allow-unstable-deps? manifest servlet-version servlet-name servlet-class url-pattern listener-namespace listener-class], :as opts}])`
+Arglists: `([out-path servlet-namespace] [out-path servlet-namespace {:keys [compiler-options deps-map aliases excluded-libs allow-unstable-deps? warn-on-resource-conflicts? manifest servlet-version servlet-name servlet-class url-pattern listener-namespace listener-class], :as opts}])`
 
 Creates an exploded war directory. The produced war can be run on legacy java servers such as Tomcat. This function AOT compiles the provided servlet-namespace. The servlet-namespace must contain a :gen-class directive implementing an HttpServlet.
   - out-path: The path of the output directory.
@@ -263,6 +263,7 @@ Creates an exploded war directory. The produced war can be run on legacy java se
   - aliases: Alias keywords used while resolving dependencies.
   - excluded-libs: A set of lib symbols to be excluded from the produced bundle. Only the lib is excluded and not its dependencies.
   - allow-unstable-deps?: A boolean. When set to true, the project can depend on local dependencies or a SNAPSHOT version of a dependency. Default to false.
+  - warn-on-resource-conflicts?. A collection of strings or regexps matched against the names of the conflicting resources. Matching resources are excluded from the warnings. Alternatively, this option can be set to false to disable warnings completly. Default to "default-warn-on-resource-conflicts?"
   - manifest: A map of additionel entries to the war manifest. Values of the manifest map can be maps to represent manifest sections. By default, the war manifest contains the "Created-by", "Built-By" and "Build-Jdk" entries.
   - servlet-version: The version of the servlet spec that we claim to conform to. Attributes corresponding to this version will be added to the web-app element of the web.xml. If not specified, defaults to 2.5.
   - servlet-name: The name of the servlet (in web.xml). Defaults to the servlet-namespace name.

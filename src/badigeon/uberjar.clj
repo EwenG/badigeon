@@ -12,31 +12,29 @@
            [java.io FileInputStream FileOutputStream]
            [java.util.regex Pattern]))
 
-(defn- find-resource-conflicts-jar [path]
+(defn- find-resource-conflicts-jar [resource-paths resource-conflict-paths path]
   (let [jar-file (JarFile. (str path))
         entries (enumeration-seq (.entries jar-file))]
     (doseq [^JarEntry entry entries
             :when (not (.isDirectory entry))]
       (let [entry-path-str (.getName entry)]
-        (when-let [previous-jar-file (get bundle/*resource-paths* entry-path-str)]
-          (let [all-root-paths (-> (get bundle/*resource-conflict-paths* entry-path-str)
+        (when-let [previous-jar-file (get @resource-paths entry-path-str)]
+          (let [all-root-paths (-> (get @resource-conflict-paths entry-path-str)
                                    (conj previous-jar-file jar-file)
                                    set)]
             (when (> (count all-root-paths) 1)
-              (set! bundle/*resource-conflict-paths* (assoc bundle/*resource-conflict-paths*
-                                                            entry-path-str
-                                                            all-root-paths)))))
-        (set! bundle/*resource-paths* (assoc bundle/*resource-paths*
-                                             entry-path-str jar-file))))))
+              (vswap! resource-conflict-paths assoc
+                      entry-path-str all-root-paths))))
+        (vswap! resource-paths assoc entry-path-str jar-file)))))
 
-(defn- find-resource-conflicts-paths [paths]
+(defn- find-resource-conflicts-paths [resource-paths resource-conflict-paths paths]
   (doseq [path paths]
     (let [f (io/file path)]
       (when (.exists f)
         (cond (and (not (.isDirectory f)) (.endsWith (str path) ".jar"))
-              (find-resource-conflicts-jar path)
+              (find-resource-conflicts-jar resource-paths resource-conflict-paths path)
               (.isDirectory f)
-              (#'bundle/find-resource-conflicts-directory path))))))
+              (#'bundle/find-resource-conflicts-directory resource-paths resource-conflict-paths path))))))
 
 (defn- find-resource-conflicts*
   ([]
@@ -46,17 +44,17 @@
          deps-map (update deps-map :mvn/repos utils/with-standard-repos)
          args-map (deps/combine-aliases deps-map aliases)
          resolved-deps (deps/resolve-deps deps-map args-map)]
-     (binding [bundle/*resource-paths* {}
-               bundle/*resource-conflict-paths* {}]
+     (let [resource-paths (volatile! {})
+           resource-conflict-paths (volatile! {})]
        (doseq [[lib {:keys [paths] :as coords}] resolved-deps]
-         (find-resource-conflicts-paths paths))
+         (find-resource-conflicts-paths resource-paths resource-conflict-paths paths))
        (let [extra-paths (reduce (partial #'bundle/extra-paths-reducer (:aliases deps-map))
                                  [] aliases)
              all-paths (-> extra-paths
                            (concat (:paths deps-map))
                            distinct)]
-         (find-resource-conflicts-paths all-paths))
-       bundle/*resource-conflict-paths*))))
+         (find-resource-conflicts-paths resource-paths resource-conflict-paths all-paths))
+       @resource-conflict-paths))))
 
 (defn- resource-root-path->string [v]
   (if (instance? JarFile v)
@@ -76,27 +74,54 @@
    (let [res-conflicts (find-resource-conflicts* params)]
      (reduce-kv find-resource-conflicts-reducer {} res-conflicts))))
 
-(defn- copy-jar [path ^Path to]
+(defn- copy-jar [resource-conflict-paths path ^Path to]
   (let [jar-file (JarFile. (str path))
         entries (enumeration-seq (.entries jar-file))]
     (doseq [^JarEntry entry entries
             :when (not (.isDirectory entry))]
       (let [entry-path (.getName entry)]
-        (when-not (contains? bundle/*resource-conflict-paths* entry-path)
+        (when-not (contains? resource-conflict-paths entry-path)
           (let [f-path (.resolve to entry-path)
                 file (.toFile f-path)]
             (Files/createDirectories (.getParent f-path) (make-array FileAttribute 0))
             (io/copy (.getInputStream jar-file entry) file)
             (.setLastModified file (.getTime entry))))))))
 
-(defn- copy-dependency [{:keys [paths]} ^Path out-path]
+(defn- make-directory-file-visitor [resource-conflict-paths ^Path root-path ^Path to]
+  (reify FileVisitor
+    (postVisitDirectory [_ dir exception]
+      (bundle/post-visit-directory root-path to dir exception))
+    (preVisitDirectory [_ dir attrs]
+      (bundle/pre-visit-directory root-path to dir attrs))
+    (visitFile [_ path attrs]
+      (let [resource-path (.relativize root-path path)]
+        (when-not (contains? resource-conflict-paths (str resource-path))
+          (let [new-file (.resolve to resource-path)]
+            (#'bundle/copy-file path new-file)))
+        FileVisitResult/CONTINUE))
+    (visitFileFailed [_ file exception]
+      (bundle/visit-file-failed file exception))))
+
+(defn- copy-directory [resource-conflict-paths from to-directory]
+  (let [to-directory (if (string? to-directory)
+                       (utils/make-path to-directory)
+                       to-directory)
+        from (if (string? from)
+               (utils/make-path from)
+               from)]
+    (Files/walkFileTree from
+                        (EnumSet/of FileVisitOption/FOLLOW_LINKS)
+                        Integer/MAX_VALUE
+                        (make-directory-file-visitor resource-conflict-paths from to-directory))))
+
+(defn- copy-dependency [resource-conflict-paths {:keys [paths]} ^Path out-path]
   (doseq [path paths]
     (let [f (io/file path)]
       (when (.exists f)
         (cond (and (not (.isDirectory f)) (.endsWith (str path) ".jar"))
-              (copy-jar path out-path)
+              (copy-jar resource-conflict-paths path out-path)
               (.isDirectory f)
-              (#'bundle/copy-directory path out-path))))))
+              (copy-directory resource-conflict-paths path out-path))))))
 
 (defn make-out-path
   "Build a path using a library name and its version number."
@@ -156,16 +181,15 @@
          (binding [*out* *err*]
            (println (str "Warning: Resource conflicts found: "
                          (pr-str (keys resource-conflict-paths-warnings))))))
-       (binding [bundle/*resource-conflict-paths* resource-conflict-paths]
-         (doseq [[lib coords] resolved-deps]
-           (when-not (contains? excluded-libs lib)
-             (copy-dependency coords out-path)))
-         (let [extra-paths (reduce (partial #'bundle/extra-paths-reducer (:aliases deps-map))
-                                   [] aliases)
-               all-paths (-> extra-paths
-                             (concat (:paths deps-map))
-                             distinct)]
-           (copy-dependency {:paths all-paths} out-path))))
+       (doseq [[lib coords] resolved-deps]
+         (when-not (contains? excluded-libs lib)
+           (copy-dependency resource-conflict-paths coords out-path)))
+       (let [extra-paths (reduce (partial #'bundle/extra-paths-reducer (:aliases deps-map))
+                                 [] aliases)
+             all-paths (-> extra-paths
+                           (concat (:paths deps-map))
+                           distinct)]
+         (copy-dependency resource-conflict-paths {:paths all-paths} out-path)))
      out-path)))
 
 (defn walk-directory
