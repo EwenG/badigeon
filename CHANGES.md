@@ -1,3 +1,7 @@
+# 1.7
+
+- Fix wrong number of arguments exception when using badigeon.bundle/bundle
+
 # 1.6
 
 - Add a warn-on-resource-conflicts? option to badigeon.bundle/bundle
