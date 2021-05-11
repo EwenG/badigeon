@@ -173,7 +173,7 @@
                   (copy-file-check-copied-paths copied-paths out-path path to)
                   (copy-file path to)))
               (.isDirectory f)
-              (copy-directory copied-paths path out-path))))))
+              (copy-directory copied-paths resource-conflict-paths path out-path))))))
 
 (defn make-out-path
   "Build a path using a library name and its version number."
