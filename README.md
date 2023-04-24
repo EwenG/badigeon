@@ -1,4 +1,4 @@
-*This project have been deprecated in favor of [https://github.com/EwenG/badigeon2](badigeon2). badigeon2 relies on [https://github.com/clojure/tools.build](clojure/tools.build), which provides most of the features originally implemented by badigeon.*
+*This project have been deprecated in favor of [badigeon2](https://github.com/EwenG/badigeon2). badigeon2 relies on [tools.build](https://github.com/clojure/tools.build), which provides most of the features originally implemented by badigeon.*
 
 # Badigeon
 
