@@ -1,3 +1,5 @@
+*This project have been deprecated in favor of [https://github.com/EwenG/badigeon2](badigeon2). badigeon2 relies on [https://github.com/clojure/tools.build](clojure/tools.build), which provides most of the features originally implemented by badigeon.*
+
 # Badigeon
 
 Badigeon is a build library based on tools.deps. Badigeon can be used to:
