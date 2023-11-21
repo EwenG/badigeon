@@ -1,9 +1,9 @@
 (ns badigeon.bundle
-  (:require [clojure.tools.deps.alpha :as deps]
+  (:require [clojure.tools.deps :as deps]
             [clojure.java.io :as io]
             [badigeon.utils :as utils]
             [clojure.string :as string]
-            [clojure.tools.deps.alpha.util.maven :as maven])
+            [clojure.tools.deps.util.maven :as maven])
   (:import [java.nio.file Path Paths Files
             FileVisitor FileVisitOption FileVisitResult
             FileSystemLoopException NoSuchFileException FileAlreadyExistsException LinkOption]

@@ -1,5 +1,5 @@
 (ns badigeon.uberjar
-  (:require [clojure.tools.deps.alpha :as deps]
+  (:require [clojure.tools.deps :as deps]
             [badigeon.bundle :as bundle]
             [badigeon.utils :as utils]
             [clojure.java.io :as io])
@@ -263,10 +263,10 @@
 
 (comment
   (merge-resource-conflicts (make-out-path 'badigeon utils/version))
-  
+
   (find-resource-conflicts
    {:deps-map (deps/slurp-deps (io/file "deps.edn")) :aliases [#_:doc]})
-  
+
   (let [out-path (make-out-path 'badigeon utils/version)]
     (badigeon.clean/clean out-path)
     (bundle out-path

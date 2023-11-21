@@ -4,7 +4,7 @@
             [clojure.zip :as zip]
             [clojure.data.xml.tree :as tree]
             [clojure.data.xml.event :as event]
-            [clojure.tools.deps.alpha.util.maven :as maven]
+            [clojure.tools.deps.util.maven :as maven]
             [badigeon.utils :as utils])
   (:import [java.io File Reader ByteArrayOutputStream]
            [java.nio.file Paths]

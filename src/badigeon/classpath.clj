@@ -1,5 +1,5 @@
 (ns badigeon.classpath
-  (:require [clojure.tools.deps.alpha :as deps]
+  (:require [clojure.tools.deps :as deps]
             [clojure.java.io :as io]
             [badigeon.utils :as utils]))
 
