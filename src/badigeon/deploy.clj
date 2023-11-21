@@ -1,5 +1,5 @@
 (ns badigeon.deploy
-  (:require [clojure.tools.deps.alpha.util.maven :as maven]
+  (:require [clojure.tools.deps.util.maven :as maven]
             [clojure.java.io :as io]
             [badigeon.utils :as utils])
   (:import [org.eclipse.aether.deployment DeployRequest]

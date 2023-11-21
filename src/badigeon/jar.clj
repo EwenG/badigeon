@@ -1,9 +1,9 @@
 (ns badigeon.jar
-  (:require [clojure.tools.deps.alpha :as deps]
+  (:require [clojure.tools.deps :as deps]
             [badigeon.pom :as pom]
             [badigeon.utils :as utils]
             [clojure.string :as string]
-            [clojure.tools.deps.alpha.util.maven :as maven]
+            [clojure.tools.deps.util.maven :as maven]
             [clojure.java.io :as io])
   (:import [java.nio.file Path Paths Files]
            [java.util EnumSet]
@@ -268,7 +268,7 @@
         :mvn/repos '{"clojars" {:url "https://repo.clojars.org/"}}
         :allow-all-dependencies? true
         :main 'badigeon.main})
-  
+
   )
 
 ;; AOT compilation, no sources in jar -> possibility to set a custom path (target/classes)

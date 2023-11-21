@@ -1,5 +1,5 @@
 (ns badigeon.install
-  (:require [clojure.tools.deps.alpha.util.maven :as maven]
+  (:require [clojure.tools.deps.util.maven :as maven]
             [clojure.java.io :as io])
   (:import [org.eclipse.aether.installation InstallRequest]))
 

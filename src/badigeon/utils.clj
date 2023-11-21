@@ -1,5 +1,5 @@
 (ns badigeon.utils
-  (:require [clojure.tools.deps.alpha.util.maven :as maven]
+  (:require [clojure.tools.deps.util.maven :as maven]
             [clojure.java.io :as io])
   (:import [java.nio.file Paths Path StandardCopyOption]
            [java.util.jar JarEntry JarOutputStream]

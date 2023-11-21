@@ -1,7 +1,7 @@
 (ns badigeon.war
   (:require [clojure.data.xml :as xml]
-            [clojure.tools.deps.alpha :as deps]
-            [clojure.tools.deps.alpha.util.maven :as maven]
+            [clojure.tools.deps :as deps]
+            [clojure.tools.deps.util.maven :as maven]
             [badigeon.utils :as utils]
             [badigeon.bundle :as bundle]
             [badigeon.jar :as jar]
@@ -157,7 +157,7 @@
                                        allow-unstable-deps?
 
                                        manifest
-                                       
+
                                        servlet-version
                                        servlet-name
                                        servlet-class
